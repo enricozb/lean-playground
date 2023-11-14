@@ -70,16 +70,16 @@
     "lean-mathlib-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1698730543,
-        "narHash": "sha256-Ks4NGyz2g3CewCaTqt1yoCdwCHpMaGY06jKW7XKiYI4=",
+        "lastModified": 1698745130,
+        "narHash": "sha256-u2XW5JmKSS6ImC6HaOOkQequ5jNFcP6ZYBx/xslRuSY=",
         "owner": "leanprover-community",
         "repo": "mathlib4",
-        "rev": "753159252c585df6b6aa7c48d2b8828d58388b79",
+        "rev": "1ff3bf341c6a14611bd2f7f689853d12f06c1694",
         "type": "github"
       },
       "original": {
         "owner": "leanprover-community",
-        "ref": "v4.2.0",
+        "ref": "v4.3.0-rc1",
         "repo": "mathlib4",
         "type": "github"
       }
@@ -112,16 +112,16 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1698714580,
-        "narHash": "sha256-56YtHCiNMP5fJoddSokEl0ws06IwetYLer4aLCnujZA=",
+        "lastModified": 1698716121,
+        "narHash": "sha256-Y2T1fLyDRSqJYH49kWLk3EKEWjuzKYzK5ySKrkdFoCY=",
         "owner": "leanprover",
         "repo": "lean4",
-        "rev": "0d7051497ea09b2b4a4ef608e371b8f317487c3c",
+        "rev": "baa4b68a71926a722b77d4ec2cba34bfc76cc5aa",
         "type": "github"
       },
       "original": {
         "owner": "leanprover",
-        "ref": "v4.2.0",
+        "ref": "v4.3.0-rc1",
         "repo": "lean4",
         "type": "github"
       }

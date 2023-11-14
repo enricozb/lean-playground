@@ -4,9 +4,9 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   inputs.lean-nix.url = "github:enricozb/lean.nix";
-  inputs.lean4.url = "github:leanprover/lean4/v4.2.0";
+  inputs.lean4.url = "github:leanprover/lean4/v4.3.0-rc1";
   inputs.lean-mathlib-src = {
-    url = "github:leanprover-community/mathlib4/v4.2.0";
+    url = "github:leanprover-community/mathlib4/v4.3.0-rc1";
     flake = false;
   };
 
@@ -26,8 +26,9 @@
       in {
         devShells.default = pkgs.mkShell {
           packages = [
-            lean-mathlib.lean-toolchain.lean
-            lean-mathlib.lean-toolchain.vscode
+            lean4-pkgs.lean
+            lean4-pkgs.vscode
+
             lean-mathlib.package.modRoot
           ];
         };
