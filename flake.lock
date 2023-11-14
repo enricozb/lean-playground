@@ -52,6 +52,38 @@
         "type": "github"
       }
     },
+    "flake-utils_3": {
+      "locked": {
+        "lastModified": 1656928814,
+        "narHash": "sha256-RIFfgBuKz6Hp89yRr7+NR5tzIAbn52h8vT6vXkYjZoM=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "7e2a3b3dfd9af950a856d66b0a7d01e3c18aa249",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "lean-mathlib-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1698730543,
+        "narHash": "sha256-Ks4NGyz2g3CewCaTqt1yoCdwCHpMaGY06jKW7XKiYI4=",
+        "owner": "leanprover-community",
+        "repo": "mathlib4",
+        "rev": "753159252c585df6b6aa7c48d2b8828d58388b79",
+        "type": "github"
+      },
+      "original": {
+        "owner": "leanprover-community",
+        "ref": "v4.2.0",
+        "repo": "mathlib4",
+        "type": "github"
+      }
+    },
     "lean-nix": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -59,11 +91,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1699893872,
-        "narHash": "sha256-pfGQdc9/od84l6N6H7VAXateIiPAW0e2h4+SQULL/3w=",
+        "lastModified": 1699910891,
+        "narHash": "sha256-CyIzkQTxKwvdmiuxQszUcQkwcg1FVl5Zmh7Qz+bXM5Q=",
         "owner": "enricozb",
         "repo": "lean.nix",
-        "rev": "586de5fa173ba754bbe699618010ac9187355c01",
+        "rev": "d8b59b51da96e49da701eeb893ab110f57887804",
         "type": "github"
       },
       "original": {
@@ -72,20 +104,77 @@
         "type": "github"
       }
     },
-    "mathlib-src": {
-      "flake": false,
+    "lean4": {
+      "inputs": {
+        "flake-utils": "flake-utils_3",
+        "lean4-mode": "lean4-mode",
+        "nix": "nix",
+        "nixpkgs": "nixpkgs_3"
+      },
       "locked": {
-        "lastModified": 1695717782,
-        "narHash": "sha256-UAcJd2O2A5XWdWlss6UOVEj+rHcKM61PlykKNnvnz4o=",
-        "owner": "leanprover-community",
-        "repo": "mathlib4",
-        "rev": "f203f2e0caf1d9ea25b7f2e4b8c2afebd2c6967b",
+        "lastModified": 1698714580,
+        "narHash": "sha256-56YtHCiNMP5fJoddSokEl0ws06IwetYLer4aLCnujZA=",
+        "owner": "leanprover",
+        "repo": "lean4",
+        "rev": "0d7051497ea09b2b4a4ef608e371b8f317487c3c",
         "type": "github"
       },
       "original": {
-        "owner": "leanprover-community",
-        "ref": "v4.1.0",
-        "repo": "mathlib4",
+        "owner": "leanprover",
+        "ref": "v4.2.0",
+        "repo": "lean4",
+        "type": "github"
+      }
+    },
+    "lean4-mode": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1676498134,
+        "narHash": "sha256-u3WvyKxOViZG53hkb8wd2/Og6muTecbh+NdflIgVeyk=",
+        "owner": "leanprover",
+        "repo": "lean4-mode",
+        "rev": "2c6ef33f476fdf5eb5e4fa4fa023ba8b11372440",
+        "type": "github"
+      },
+      "original": {
+        "owner": "leanprover",
+        "repo": "lean4-mode",
+        "type": "github"
+      }
+    },
+    "lowdown-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1633514407,
+        "narHash": "sha256-Dw32tiMjdK9t3ETl5fzGrutQTzh2rufgZV4A/BbxuD4=",
+        "owner": "kristapsdz",
+        "repo": "lowdown",
+        "rev": "d2c2b44ff6c27b936ec27358a2653caaef8f73b8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kristapsdz",
+        "repo": "lowdown",
+        "type": "github"
+      }
+    },
+    "nix": {
+      "inputs": {
+        "lowdown-src": "lowdown-src",
+        "nixpkgs": "nixpkgs_2",
+        "nixpkgs-regression": "nixpkgs-regression"
+      },
+      "locked": {
+        "lastModified": 1657097207,
+        "narHash": "sha256-SmeGmjWM3fEed3kQjqIAO8VpGmkC2sL1aPE7kKpK650=",
+        "owner": "NixOS",
+        "repo": "nix",
+        "rev": "f6316b49a0c37172bca87ede6ea8144d7d89832f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nix",
         "type": "github"
       }
     },
@@ -105,7 +194,55 @@
         "type": "github"
       }
     },
+    "nixpkgs-regression": {
+      "locked": {
+        "lastModified": 1643052045,
+        "narHash": "sha256-uGJ0VXIhWKGXxkeNnq4TvV3CIOkUJ3PAoLZ3HMzNVMw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "215d4d0fd80ca5163643b03a33fde804a29cc1e2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "215d4d0fd80ca5163643b03a33fde804a29cc1e2",
+        "type": "github"
+      }
+    },
     "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1653988320,
+        "narHash": "sha256-ZaqFFsSDipZ6KVqriwM34T739+KLYJvNmCWzErjAg7c=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2fa57ed190fd6c7c746319444f34b5917666e5c1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-22.05-small",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
+        "lastModified": 1686089707,
+        "narHash": "sha256-LTNlJcru2qJ0XhlhG9Acp5KyjB774Pza3tRH0pKIb3o=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "af21c31b2a1ec5d361ed8050edd0303c31306397",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_4": {
       "locked": {
         "lastModified": 1699725108,
         "narHash": "sha256-NTiPW4jRC+9puakU4Vi8WpFEirhp92kTOSThuZke+FA=",
@@ -124,9 +261,10 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "lean-mathlib-src": "lean-mathlib-src",
         "lean-nix": "lean-nix",
-        "mathlib-src": "mathlib-src",
-        "nixpkgs": "nixpkgs_2"
+        "lean4": "lean4",
+        "nixpkgs": "nixpkgs_4"
       }
     },
     "systems": {

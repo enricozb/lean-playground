@@ -4,29 +4,31 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   inputs.lean-nix.url = "github:enricozb/lean.nix";
-
-  inputs.mathlib-src = {
-    url = "github:leanprover-community/mathlib4/v4.1.0";
+  inputs.lean4.url = "github:leanprover/lean4/v4.2.0";
+  inputs.lean-mathlib-src = {
+    url = "github:leanprover-community/mathlib4/v4.2.0";
     flake = false;
   };
 
-  outputs = { self, nixpkgs, flake-utils, lean-nix, mathlib-src }:
+  outputs = { self, nixpkgs, flake-utils, lean-nix, lean4, lean-mathlib-src }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        leanPkgs = lean-nix.packages.${system};
+        lean4-pkgs = lean4.packages.${system};
+        lean-nix-pkgs = lean-nix.packages.${system};
 
-        lean-mathlib = leanPkgs.lake2nix {
+        lean-mathlib = lean-nix-pkgs.lake2nix {
           name = "mathlib";
-          src = mathlib-src;
+          src = lean-mathlib-src;
+          lean-toolchain = lean4-pkgs;
         };
 
       in {
         devShells.default = pkgs.mkShell {
           packages = [
-            lean-mathlib.package
-            lean-mathlib.lean
-            lean-mathlib.lean.vscode
+            lean-mathlib.lean-toolchain.lean
+            lean-mathlib.lean-toolchain.vscode
+            lean-mathlib.package.modRoot
           ];
         };
       });
