@@ -111,10 +111,8 @@ lemma Q_pow_two {m : ℕ} : Q m ^ 2 = Q m + 1 := by
   have h10 : Q m 1 0 = 1 := rfl
   have h11 : Q m 1 1 = 0 := rfl
   fin_cases i
-  all_goals {
-    fin_cases j
-    all_goals simp [pow_two, Matrix.mul_apply, h00, h01, h10, h11]
-  }
+  all_goals fin_cases j
+  all_goals simp [pow_two, Matrix.mul_apply, h00, h01, h10, h11]
 
 lemma Q_pow_succ {m : ℕ} (n : ℕ) : Q m ^ (n + 2) = Q m ^ (n + 1) + Q m ^ n := by
   have h1 : Q m ^ (n + 2) = Q m ^ n * Q m ^ 2 := by simp [pow_add]

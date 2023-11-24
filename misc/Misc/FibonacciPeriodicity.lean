@@ -6,6 +6,7 @@ import Mathlib.Data.ZMod.Basic
 import Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup
 import Mathlib.LinearAlgebra.Matrix.ZPow
 import Mathlib.LinearAlgebra.Matrix.Determinant
+import Mathlib.GroupTheory.OrderOfElement
 
 -- TODO:
 -- [x] prove Fib is equivalent to the matrix version
@@ -14,13 +15,29 @@ import Mathlib.LinearAlgebra.Matrix.Determinant
 namespace Fib
 
 -- matrix used in the fibonacci sequence
-def Q : Matrix (Fin 2) (Fin 2) ℕ := ![
+def Q : Matrix (Fin 2) (Fin 2) ℤ := ![
   ![1, 1],
   ![1, 0]
 ]
 
--- matrix used in the fibonacci sequence but with entries in ZMod n
-def Q_mod (n : ℕ) : Matrix (Fin 2) (Fin 2) (ZMod n) := Q.map (↑·)
+lemma one_ne_zero {m : ℕ} [Fact (1 < m)] : (1 : ZMod m) ≠ 0 := by simp
+
+-- matrix used in the fibonacci sequence but with entries in ZMod m
+def Q_mod (m : ℕ) [Fact (1 < m)] : GL (Fin 2) (ZMod m) :=
+  let Q_mod m : (Matrix (Fin 2) (Fin 2) (ZMod m)) := (Q.map (↑·) : Matrix (Fin 2) (Fin 2) (ZMod m))
+
+  let i : (Matrix.det (Q_mod m)) ≠ 0 := by
+    simp [Matrix.det_fin_two]
+    have Q_00 : Q 0 0 = 1 := by simp only
+    have Q_01 : Q 0 1 = 1 := by simp only
+    have Q_10 : Q 1 0 = 1 := by simp only
+    have Q_11 : Q 1 1 = 0 := by simp only
+    simp [Q_00, Q_01, Q_10, Q_11]
+
+  Matrix.GeneralLinearGroup.mkOfDetNeZero (Q_mod m) i
+
+theorem Q_mod_fin_order {m : ℕ} [Fact (1 < m)] (n : ℕ) : IsOfFinOrder (Q_mod m) := by
+  rw [IsOfFinOrder]
 
 lemma Q_mod_00 : Q_mod n 0 0 = 1 := by simp [Q_mod, Matrix.map_apply, Q]
 lemma Q_mod_01 : Q_mod n 0 1 = 1 := by simp [Q_mod, Matrix.map_apply, Q]
@@ -28,17 +45,17 @@ lemma Q_mod_10 : Q_mod n 1 0 = 1 := by simp [Q_mod, Matrix.map_apply, Q]
 lemma Q_mod_11 : Q_mod n 1 1 = 0 := by simp [Q_mod, Matrix.map_apply, Q]
 
 -- definition from mathlib
-def fib (n : ℕ) : ℕ :=
-  ((fun p : ℕ × ℕ => (p.snd, p.fst + p.snd))^[n] (0, 1)).fst
+def fib (n : ℕ) : ℤ :=
+  ((fun p : ℤ × ℤ => (p.snd, p.fst + p.snd))^[n] (0, 1)).fst
 
 -- standard recursive definition of the fibonacci sequence
-def fib_rec : ℕ → ℕ := fun
+def fib_rec : ℕ → ℤ := fun
   | 0 => 0
   | 1 => 1
   | n + 2 => fib_rec (n + 1) + fib_rec (n)
 
 -- standard matrix definition of the fibonacci sequence
-def fib_mat : ℕ → ℕ := fun
+def fib_mat : ℕ → ℤ := fun
   | 0 => 0
   | 1 => 1
   | n + 2 => (Q.mulVec ![fib_mat (n+1), fib_mat n]) 0
@@ -141,6 +158,16 @@ theorem pisano_period : ∀ m > 1, ∃ c, Function.Periodic (fun n => fib_mod m 
   simp only [Function.Periodic, fib_add_two]
 
 
-theorem pisano_period_bound : ∀ m > 1, ∃ c ≤ 6 * m, Function.Periodic (fun n => (fib n) % m) c := sorry
+theorem pisano_period_bound (m : ℕ) {hm : m > 1} : ∃ c ≤ 6 * m, Function.Periodic (fun n => (fib n) % m) c := sorry
 
 end Fib
+
+-- theorem what : false := by
+--   let a : ℕ := 1
+--   have ha : a = 1 := rfl
+--   have val_eq_zero : @ZMod.val 1 a = 0 := by simp
+--   have a_neq_zero : a ≠ 0 := by simp
+--   have a_eq_zero := (@ZMod.val_eq_zero 1 a).mp val_eq_zero
+--   exact a_neq_zero a_eq_zero
+
+  
