@@ -111,21 +111,21 @@ lemma Q_pow_two {m : ℕ} : Q m ^ 2 = Q m + 1 := by
   all_goals fin_cases j
   all_goals simp [pow_two, Matrix.mul_apply, h00, h01, h10, h11]
 
+-- a _familiar_ recurrence relation
 lemma Q_pow_succ {m : ℕ} (n : ℕ) : Q m ^ (n + 2) = Q m ^ (n + 1) + Q m ^ n := by
   have h1 : Q m ^ (n + 2) = Q m ^ n * Q m ^ 2 := by simp [pow_add]
   simp only [h1, Q_pow_two, mul_add, mul_one, add_left_inj]
   rw [pow_add, pow_one]
 
-lemma Q_det_eq_neg_one {m : ℕ} [Fact (m > 1)] : (Q m).det = -1 := by
-  rw [Matrix.det_fin_two]
-  have h00 : Q m 0 0 = 1 := rfl
-  have h01 : Q m 0 1 = 1 := rfl
-  have h10 : Q m 1 0 = 1 := rfl
-  have h11 : Q m 1 1 = 0 := rfl
-  simp only [h00, h01, h10, h11]
-  ring
-
-lemma Q_unit_det {m : ℕ} [hm : Fact (m > 1)] : IsUnit (Q m).det := by
+lemma Q_unit_det {m : ℕ} : IsUnit (Q m).det := by
+  have Q_det_eq_neg_one : (Q m).det = -1 := by
+    rw [Matrix.det_fin_two]
+    have h00 : Q m 0 0 = 1 := rfl
+    have h01 : Q m 0 1 = 1 := rfl
+    have h10 : Q m 1 0 = 1 := rfl
+    have h11 : Q m 1 1 = 0 := rfl
+    simp only [h00, h01, h10, h11]
+    ring
   simp only [Q_det_eq_neg_one, IsUnit.neg_iff, isUnit_one]
 
 -- powers of `Q` eventually repeat
@@ -147,8 +147,8 @@ theorem Q_order_finite {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Q m ^ c = 1 :=
   have hQ_pow_c_eq_one : Q m ^ (a - b) = 1 := by
     simp only [
       ge_iff_le, ne_eq, le_refl, tsub_eq_zero_of_le, pow_zero,
-      Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
-      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (by rfl)
+      Matrix.pow_sub' (Q m) (@Q_unit_det m) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
+      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m) (by rfl)
     ]
     
   exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
@@ -201,9 +201,11 @@ theorem fib_pow_mat_is_fib {m : ℕ} [hm : Fact (m > 1)] :
   intro n
   simp only [Q_pow_succ, Matrix.add_apply]
 
+-- `FibMod.fib` equals `FibMod.fib_pow_mat`
 theorem fib_eq_fib_pow_mat {m : ℕ} [hm : Fact (m > 1)] : @fib m = @fib_pow_mat m hm :=
   @is_fib_eq m hm (@fib m) (@fib_pow_mat m hm) (@fib_is_fib m) (@fib_pow_mat_is_fib m hm)
 
+-- `FibMod.fib` is periodic, but with no bounds on the period
 theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Function.Periodic (@fib m) c := by
   simp [fib_eq_fib_pow_mat, fib_pow_mat]
   have ⟨c, hc_gt_zero, hQ_pow_c_eq_one⟩ := @Q_order_finite m hm

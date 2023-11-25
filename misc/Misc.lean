@@ -4,5 +4,5 @@
 -- TODO: state the theorem: median 2nd prime factor is 37
 import «Misc».PrimeFactorDensity
 
--- Fibonacci and Fibonacci mod m periodicity
+-- Fibonacci and Fibonacci mod m periodicity (pisano periods)
 import «Misc».Fibonacci
