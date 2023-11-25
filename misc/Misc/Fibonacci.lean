@@ -5,6 +5,21 @@ import Mathlib.Data.ZMod.Basic
 import Mathlib.Init.Function
 import Mathlib.LinearAlgebra.Matrix.ZPow
 
+/-!
+# Fibonacci Sequence and Pisano Periods
+
+This file has two namespaces: `Fib` and `FibMod`. These are pretty dual to
+each other and can probably be combined by setting the modulus to zero for the
+standard Fibonacci sequence and to greater than one for the modular sequence.
+Having the modulus equal to one causes the matrix `Q` to not be invertible,
+since its determinant is zero.
+
+The `FibMod`  has some additional theorems about the modularity of the
+Fibonacci sequence modulo `m`. This periodicity is established by equating the
+Fibonacci sequence modulo `m` to powers of the matrix `Q`, which has an order
+since `Matrix (Fin 2) (Fin 2) (ZMod m)` is a `Fintype`.
+-/
+
 namespace Fib
 
 -- matrix used in the fibonacci sequence
