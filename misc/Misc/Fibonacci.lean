@@ -40,6 +40,7 @@ def fib_rec_mat : ℕ → ℕ := fun
 -- power matrix definition
 def fib_pow_mat (n : ℕ) : ℕ := (Q^(n + 1)) 1 1
 
+-- whether a function is the fibonacci sequence
 def is_fib (f : ℕ → ℕ) : Prop := f 0 = 0 ∧ f 1 = 1 ∧ ∀ n, f (n + 2) = f (n + 1) + f n
 
 -- efficient definition satisfies recurrece relation
@@ -115,9 +116,42 @@ lemma Q_pow_succ {m : ℕ} (n : ℕ) : Q m ^ (n + 2) = Q m ^ (n + 1) + Q m ^ n :
   simp only [h1, Q_pow_two, mul_add, mul_one, add_left_inj]
   rw [pow_add, pow_one]
 
-lemma Q_det_eq_one := sorry
+lemma Q_det_eq_neg_one {m : ℕ} [Fact (m > 1)] : (Q m).det = -1 := by
+  rw [Matrix.det_fin_two]
+  have h00 : Q m 0 0 = 1 := rfl
+  have h01 : Q m 0 1 = 1 := rfl
+  have h10 : Q m 1 0 = 1 := rfl
+  have h11 : Q m 1 1 = 0 := rfl
+  simp only [h00, h01, h10, h11]
+  ring
 
-lemma Q_unit_det {m : ℕ} [hm : Fact (m > 1)] : IsUnit (Q m).det := sorry
+lemma Q_unit_det {m : ℕ} [hm : Fact (m > 1)] : IsUnit (Q m).det := by
+  simp only [Q_det_eq_neg_one, IsUnit.neg_iff, isUnit_one]
+
+-- powers of `Q` eventually repeat
+lemma Q_exists_pow_eq {m : ℕ} [Fact (m > 1)] : ∃ a b, a > b ∧ Q m ^ a = Q m ^ b := by
+  have h_not_injective : ¬Function.Injective (fun n => Q m ^ n) :=
+    not_injective_infinite_finite _
+  simp [Function.Injective] at h_not_injective
+  have ⟨a, b, hQ_pow_a_eq_Q_pow_b, ha_neq_b⟩ := h_not_injective
+  have ha_b_order : b > a ∨ a > b := Nat.lt_or_gt_of_ne ha_neq_b    
+  cases ha_b_order with
+  | inl hb_gt_a => exact ⟨b, a, hb_gt_a, hQ_pow_a_eq_Q_pow_b.symm⟩
+  | inr ha_gt_b => exact ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩
+
+-- `Q` has finite order
+theorem Q_order_finite {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Q m ^ c = 1 := by
+  have ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩ := @Q_exists_pow_eq m hm
+  have a_ge_b : a ≥ b := Nat.le_of_lt ha_gt_b 
+  have ha_sub_b_gt_zero : a - b > 0 := by simp only [ge_iff_le, gt_iff_lt, tsub_pos_iff_lt, ha_gt_b]
+  have hQ_pow_c_eq_one : Q m ^ (a - b) = 1 := by
+    simp only [
+      ge_iff_le, ne_eq, le_refl, tsub_eq_zero_of_le, pow_zero,
+      Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
+      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (by rfl)
+    ]
+    
+  exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
 
 -- fibonacci sequence modulo m > 1
 def fib {m : ℕ} (n : ℕ) : (ZMod m) := Fib.fib_fast n
@@ -125,6 +159,7 @@ def fib {m : ℕ} (n : ℕ) : (ZMod m) := Fib.fib_fast n
 -- power matrix definition
 def fib_pow_mat {m : ℕ} [Fact (m > 1)] (n : ℕ) : (ZMod m) := (Q m ^ (n + 1)) 1 1
 
+-- whether a function is the fibonacci sequence
 def is_fib {m : ℕ} (f : ℕ → (ZMod m)) : Prop :=
   f 0 = 0 ∧ f 1 = 1 ∧ ∀ n, f (n + 2) = f (n + 1) + f n
 
@@ -146,6 +181,7 @@ theorem is_fib_eq {m : ℕ} [Fact (m > 1)] (f₁ : ℕ → (ZMod m)) (f₂ : ℕ
     · exact Nat.lt.base (n + 1)
     · apply Nat.lt.step; exact Nat.lt.base n
 
+-- `FibMod.fib` definition satisfies recurrece relation
 theorem fib_is_fib {m : ℕ} : is_fib (@fib m) := by
   rw [is_fib, fib, Fib.fib_fast]
   apply And.intro; simp
@@ -153,6 +189,7 @@ theorem fib_is_fib {m : ℕ} : is_fib (@fib m) := by
   apply And.intro; simp
   simp [fib, Fib.fib_fast_is_fib.right.right]
 
+-- `FibMod.fib_pow_mat` definition satisfies recurrece relation
 theorem fib_pow_mat_is_fib {m : ℕ} [hm : Fact (m > 1)] :
   is_fib (@fib_pow_mat m hm) := by
   simp [is_fib, fib_pow_mat]
@@ -166,29 +203,6 @@ theorem fib_pow_mat_is_fib {m : ℕ} [hm : Fact (m > 1)] :
 
 theorem fib_eq_fib_pow_mat {m : ℕ} [hm : Fact (m > 1)] : @fib m = @fib_pow_mat m hm :=
   @is_fib_eq m hm (@fib m) (@fib_pow_mat m hm) (@fib_is_fib m) (@fib_pow_mat_is_fib m hm)
-  
-lemma Q_pow_eq {m : ℕ} [Fact (m > 1)] : ∃ a b, a > b ∧ Q m ^ a = Q m ^ b := by
-  have h_not_injective : ¬Function.Injective (fun n => Q m ^ n) :=
-    not_injective_infinite_finite _
-  simp [Function.Injective] at h_not_injective
-  have ⟨a, b, hQ_pow_a_eq_Q_pow_b, ha_neq_b⟩ := h_not_injective
-  have ha_b_order : b > a ∨ a > b := Nat.lt_or_gt_of_ne ha_neq_b    
-  cases ha_b_order with
-  | inl hb_gt_a => exact ⟨b, a, hb_gt_a, hQ_pow_a_eq_Q_pow_b.symm⟩
-  | inr ha_gt_b => exact ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩
-
-theorem Q_order_finite {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Q m ^ c = 1 := by
-  have ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩ := @Q_pow_eq m hm
-  have a_ge_b : a ≥ b := Nat.le_of_lt ha_gt_b 
-  have ha_sub_b_gt_zero : a - b > 0 := by simp only [ge_iff_le, gt_iff_lt, tsub_pos_iff_lt, ha_gt_b]
-  have hQ_pow_c_eq_one : Q m ^ (a - b) = 1 := by
-    simp only [
-      ge_iff_le, ne_eq, le_refl, tsub_eq_zero_of_le, pow_zero,
-      Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
-      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (by rfl)
-    ]
-    
-  exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
 
 theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Function.Periodic (@fib m) c := by
   simp [fib_eq_fib_pow_mat, fib_pow_mat]
