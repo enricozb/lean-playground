@@ -1,5 +1,7 @@
 # Lean Playground
 
+Messing around with [Lean](https://github.com/leanprover/lean4).
+
 ## [`misc/Misc/Fibonacci.lean`](./misc/Misc/Fibonacci.lean)
 - Standard definition of the Fibonacci sequence
   ```lean
@@ -35,4 +37,5 @@
     ∃ 0 < c, c ≤ 6 * m ∧ Function.Periodic (@fib m) c := ...
   ```
 
+[Lean]: https://github.com/leanprover/lean4
 [Pisano Period]: https://en.wikipedia.org/wiki/Pisano_period
