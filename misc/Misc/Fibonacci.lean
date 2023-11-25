@@ -1,7 +1,9 @@
+import Mathlib.Algebra.Periodic
+import Mathlib.Data.Fintype.Card
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.ZMod.Basic
-import Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup
-import Mathlib.Data.Fintype.Card
+import Mathlib.Init.Function
+import Mathlib.LinearAlgebra.Matrix.ZPow
 
 namespace Fib
 
@@ -92,12 +94,6 @@ end Fib
 
 namespace FibMod
 
--- fibonacci sequence modulo m > 1
-def fib_mod {m : ℕ} [Fact (m > 1)] (n : ℕ) : (ZMod m) := Fib.fib_fast n
-
-def is_fib {m : ℕ} (f : ℕ → (ZMod m)) : Prop :=
-  f 0 = 0 ∧ f 1 = 1 ∧ ∀ n, f (n + 2) = f (n + 1) + f n
-
 -- matrix used in the fibonacci sequence
 def Q (m : ℕ) : Matrix (Fin 2) (Fin 2) (ZMod m) := ![
   ![1, 1],
@@ -119,23 +115,87 @@ lemma Q_pow_succ {m : ℕ} (n : ℕ) : Q m ^ (n + 2) = Q m ^ (n + 1) + Q m ^ n :
   simp only [h1, Q_pow_two, mul_add, mul_one, add_left_inj]
   rw [pow_add, pow_one]
 
-theorem fib_mod_eq_Q_mod_pow {m : ℕ} [Fact (m > 1)] :
-  is_fib (fun n => (Q m ^ (n + 1)) 1 1) := by
-  simp [is_fib]
-  -- Q m 1 1 = 0
+lemma Q_det_eq_one := sorry
+
+lemma Q_unit_det {m : ℕ} [hm : Fact (m > 1)] : IsUnit (Q m).det := sorry
+
+-- fibonacci sequence modulo m > 1
+def fib {m : ℕ} (n : ℕ) : (ZMod m) := Fib.fib_fast n
+
+-- power matrix definition
+def fib_pow_mat {m : ℕ} [Fact (m > 1)] (n : ℕ) : (ZMod m) := (Q m ^ (n + 1)) 1 1
+
+def is_fib {m : ℕ} (f : ℕ → (ZMod m)) : Prop :=
+  f 0 = 0 ∧ f 1 = 1 ∧ ∀ n, f (n + 2) = f (n + 1) + f n
+
+-- any two functions f₁ and f₂ that are fib are equal
+theorem is_fib_eq {m : ℕ} [Fact (m > 1)] (f₁ : ℕ → (ZMod m)) (f₂ : ℕ → (ZMod m)) {hf₁ : is_fib f₁} {hf₂ : is_fib f₂} : f₁ = f₂ := by
+  apply funext; intro n
+  have ⟨h0f₁, h1f₁, hnf₁⟩ := hf₁
+  have ⟨h0f₂, h1f₂, hnf₂⟩ := hf₂
+  induction' n using Nat.strong_induction_on with n nih
+  cases n with
+  -- 0
+  | zero => rw [h0f₁, h0f₂]
+  | succ n => cases n with
+  -- 1
+  | zero => rw [h1f₁, h1f₂]
+  -- n+2
+  | succ n =>
+    rw [hnf₁ n, hnf₂ n, nih n _, nih (n+1) _]
+    · exact Nat.lt.base (n + 1)
+    · apply Nat.lt.step; exact Nat.lt.base n
+
+theorem fib_is_fib {m : ℕ} : is_fib (@fib m) := by
+  rw [is_fib, fib, Fib.fib_fast]
+  apply And.intro; simp
+  rw [fib, Fib.fib_fast]
+  apply And.intro; simp
+  simp [fib, Fib.fib_fast_is_fib.right.right]
+
+theorem fib_pow_mat_is_fib {m : ℕ} [hm : Fact (m > 1)] :
+  is_fib (@fib_pow_mat m hm) := by
+  simp [is_fib, fib_pow_mat]
+  -- Q m ^ 1 1 1 = 0
   apply And.intro; rfl
   -- Q m ^ 2 1 1 = 1
   apply And.intro; rw [Q_pow_two]; simp; rfl
+  -- Q m ^ (n + 3) = Q m ^ (n + 2) + Q m ^ (n + 1)
   intro n
   simp only [Q_pow_succ, Matrix.add_apply]
+
+theorem fib_eq_fib_pow_mat {m : ℕ} [hm : Fact (m > 1)] : @fib m = @fib_pow_mat m hm :=
+  @is_fib_eq m hm (@fib m) (@fib_pow_mat m hm) (@fib_is_fib m) (@fib_pow_mat_is_fib m hm)
   
-theorem Q_order_finite {m : ℕ} [Fact (m > 1)] : ∃ c > 0, Q ^ c = 1 := sorry
+lemma Q_pow_eq {m : ℕ} [Fact (m > 1)] : ∃ a b, a > b ∧ Q m ^ a = Q m ^ b := by
+  have h_not_injective : ¬Function.Injective (fun n => Q m ^ n) :=
+    not_injective_infinite_finite _
+  simp [Function.Injective] at h_not_injective
+  have ⟨a, b, hQ_pow_a_eq_Q_pow_b, ha_neq_b⟩ := h_not_injective
+  have ha_b_order : b > a ∨ a > b := Nat.lt_or_gt_of_ne ha_neq_b    
+  cases ha_b_order with
+  | inl hb_gt_a => exact ⟨b, a, hb_gt_a, hQ_pow_a_eq_Q_pow_b.symm⟩
+  | inr ha_gt_b => exact ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩
 
+theorem Q_order_finite {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Q m ^ c = 1 := by
+  have ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩ := @Q_pow_eq m hm
+  have a_ge_b : a ≥ b := Nat.le_of_lt ha_gt_b 
+  have ha_sub_b_gt_zero : a - b > 0 := by simp only [ge_iff_le, gt_iff_lt, tsub_pos_iff_lt, ha_gt_b]
+  have hQ_pow_c_eq_one : Q m ^ (a - b) = 1 := by
+    simp only [
+      ge_iff_le, ne_eq, le_refl, tsub_eq_zero_of_le, pow_zero,
+      Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
+      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m hm) (by rfl)
+    ]
+    
+  exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
 
--- theorem Q_det_ne_zero (m : ℕ) [Fact (m > 1)] : (Q m).det ≠ 0 := by
---   simp [Q, Matrix.det_fin_two]
-
--- def Q_GL (m : ℕ) [Fact (m > 1)] : GL (Fin 2) (ZMod m) :=
---   Matrix.GeneralLinearGroup.mkOfDetNeZero (Q m) (Q_det_ne_zero m)
+theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Function.Periodic (@fib m) c := by
+  simp [fib_eq_fib_pow_mat, fib_pow_mat]
+  have ⟨c, hc_gt_zero, hQ_pow_c_eq_one⟩ := @Q_order_finite m hm
+  apply Exists.intro
+  swap; exact c
+  apply And.intro; exact hc_gt_zero
+  simp [pow_add, hQ_pow_c_eq_one]
 
 end FibMod
