@@ -4,6 +4,8 @@ import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.ZMod.Basic
 import Mathlib.Init.Function
 import Mathlib.LinearAlgebra.Matrix.ZPow
+import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+
 
 /-!
 # Fibonacci Sequence and Pisano Periods
@@ -132,16 +134,60 @@ lemma Q_pow_succ {m : ℕ} (n : ℕ) : Q m ^ (n + 2) = Q m ^ (n + 1) + Q m ^ n :
   simp only [h1, Q_pow_two, mul_add, mul_one, add_left_inj]
   rw [pow_add, pow_one]
 
+lemma Q_det (m : ℕ) : (Q m).det = -1 := by
+  rw [Matrix.det_fin_two]
+  have h00 : Q m 0 0 = 1 := rfl
+  have h01 : Q m 0 1 = 1 := rfl
+  have h10 : Q m 1 0 = 1 := rfl
+  have h11 : Q m 1 1 = 0 := rfl
+  simp only [h00, h01, h10, h11]
+  ring_nf
+
 lemma Q_unit_det {m : ℕ} : IsUnit (Q m).det := by
-  have Q_det_eq_neg_one : (Q m).det = -1 := by
-    rw [Matrix.det_fin_two]
-    have h00 : Q m 0 0 = 1 := rfl
-    have h01 : Q m 0 1 = 1 := rfl
-    have h10 : Q m 1 0 = 1 := rfl
-    have h11 : Q m 1 1 = 0 := rfl
-    simp only [h00, h01, h10, h11]
-    ring
-  simp only [Q_det_eq_neg_one, IsUnit.neg_iff, isUnit_one]
+  simp only [Q_det m, IsUnit.neg_iff, isUnit_one]
+
+lemma Q_entries (m : ℕ) (n : ℕ) :
+  (Q m ^ (n + 2)) 1 1 = (Q m ^ (n + 1)) 1 0 ∧
+  (Q m ^ (n + 1)) 1 0 = (Q m ^ (n + 1)) 0 1 ∧
+  (Q m ^ (n + 1)) 0 1 = (Q m ^ n) 0 0  
+  := sorry
+
+-- if `f(n) := (Q m ^ n)` 1 1 has period `p`, then `Q` has order `p`
+lemma Q_entry_period_is_order (m : ℕ)
+  (h_period : ∀ (x : ℕ), (Q m ^ (x + p + 1)) 1 1 = (Q m ^ (x + 1)) 1 1):
+  Q m ^ p = 1 := by
+
+  have hQ_pow_eq : ∀ x, Q m ^ (x + p + 1) = Q m ^ (x + 1) := by
+    intro x
+    have ⟨h11_eq_10, h10_eq_01, h01_eq_00⟩ := Q_entries m (x + p + 1)
+    have ⟨h11_eq_10', h10_eq_01', h01_eq_00'⟩ := Q_entries m (x + 1)
+    apply funext; intro i; apply funext; intro j
+    fin_cases i
+    all_goals fin_cases j
+    all_goals simp only [Fin.mk_one, Fin.zero_eta]
+    · have hx2 := h_period (x + 2)
+      rw [(by ring : x + 2 + p + 1 = x + p + 3)] at hx2
+      rw [←h01_eq_00, ←h10_eq_01, ←h11_eq_10, hx2, (by ring : x + 2 + 1 = x + 3),
+          h11_eq_10', h10_eq_01', h01_eq_00']
+    · have ⟨h11_eq_10, h10_eq_01, _⟩ := Q_entries m (x + p)
+      have ⟨h11_eq_10', h10_eq_01', _⟩ := Q_entries m x
+      rw [←h10_eq_01, ←h10_eq_01', ←h11_eq_10, ←h11_eq_10', ←h_period (x + 1)]
+      ring_nf
+    · have ⟨h11_eq_10, _, _⟩ := Q_entries m (x + p)
+      have ⟨h11_eq_10', _, _⟩ := Q_entries m x
+      rw [←h11_eq_10, ←h11_eq_10', ←h_period (x + 1)]
+      ring_nf
+    · exact h_period x
+
+  have hQ_pow_p : Q m ^ (p + 1) = Q m := by
+    have h := hQ_pow_eq 0
+    simp only [zero_add, pow_one] at h
+    exact h
+  have hp : p = p + 1 - 1 := by simp
+  rw [
+    hp, Matrix.pow_sub' (Q m) (@Q_unit_det m) (by simp only [le_add_iff_nonneg_left, zero_le]),
+    hQ_pow_p, pow_one, Matrix.mul_nonsing_inv _ (@Q_unit_det m)
+  ]
 
 -- powers of `Q` eventually repeat
 lemma Q_exists_pow_eq {m : ℕ} [Fact (m > 1)] : ∃ a b, a > b ∧ Q m ^ a = Q m ^ b := by
@@ -163,7 +209,7 @@ theorem Q_order_finite {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Q m ^ c = 1 :=
     simp only [
       ge_iff_le, ne_eq, le_refl, tsub_eq_zero_of_le, pow_zero,
       Matrix.pow_sub' (Q m) (@Q_unit_det m) (a_ge_b), ←hQ_pow_a_eq_Q_pow_b,
-      Matrix.det_pow,  ← Matrix.pow_sub' (Q m) (@Q_unit_det m) (by rfl)
+      Matrix.det_pow, ←Matrix.pow_sub' (Q m) (@Q_unit_det m) (by rfl)
     ]
     
   exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
@@ -220,13 +266,32 @@ theorem fib_pow_mat_is_fib {m : ℕ} [hm : Fact (m > 1)] :
 theorem fib_eq_fib_pow_mat {m : ℕ} [hm : Fact (m > 1)] : @fib m = @fib_pow_mat m hm :=
   @is_fib_eq m hm (@fib m) (@fib_pow_mat m hm) (@fib_is_fib m) (@fib_pow_mat_is_fib m hm)
 
+-- `FibMod.fib m` has period `p`
+def fib_period (m : ℕ) [Fact (m > 1)] (p : ℕ) := p > 0 ∧ Function.Periodic (@fib m) p
+
+-- The pisano period, or the minimum period `p` for `FibMod.fib m` 
+def pisano_period (m : ℕ) (p : ℕ) [hm : Fact (m > 1)] := @fib_period m hm p ∧ ∀ p' < p, ¬@fib_period m hm p'
+
 -- `FibMod.fib` is periodic, but with no bounds on the period
-theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] : ∃ c > 0, Function.Periodic (@fib m) c := by
-  simp [fib_eq_fib_pow_mat, fib_pow_mat]
+theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] : ∃ p, fib_period m p := by
+  simp [fib_period, fib_eq_fib_pow_mat, fib_pow_mat]
   have ⟨c, hc_gt_zero, hQ_pow_c_eq_one⟩ := @Q_order_finite m hm
   apply Exists.intro
   swap; exact c
   apply And.intro; exact hc_gt_zero
   simp [pow_add, hQ_pow_c_eq_one]
+
+theorem fib_period_even (m : ℕ) [hm : Fact (m > 1)] (p : ℕ) (hp : fib_period m p) : m > 2 → Even p := by
+  intro hm'
+  rw [fib_period] at hp
+  have ⟨_, h_period⟩ := hp
+  simp only [Function.Periodic, fib_eq_fib_pow_mat, fib_pow_mat] at h_period
+  have hQ_order : Q m ^ p = 1 := Q_entry_period_is_order m h_period
+  have hQ_det_pow : (Q m).det ^ p = 1 := by
+    rw [←Matrix.det_pow (Q m) p, hQ_order, Matrix.det_one]
+  rw [Q_det] at hQ_det_pow
+  rw [neg_one_pow_eq_one_iff_even] at hQ_det_pow
+  exact hQ_det_pow
+  exact @ZMod.neg_one_ne_one m (Fact.mk hm')
 
 end FibMod
