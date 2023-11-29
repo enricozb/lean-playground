@@ -2,6 +2,8 @@
 
 Messing around with [Lean](https://github.com/leanprover/lean4).
 
+Below are some highlights of each of the files.
+
 ## [`misc/Misc/Fibonacci.lean`](./misc/Misc/Fibonacci.lean)
 - Standard definition of the Fibonacci sequence
   ```lean
@@ -19,22 +21,30 @@ Messing around with [Lean](https://github.com/leanprover/lean4).
     \end{bmatrix}
     ```
 - Equating these multiple definitions
+
+## [`misc/Misc/FibMod.lean`](./misc/Misc/FibMod.lean)
 - Modular definition of the Fibonacci sequence:
   ```lean
-  def fib {m : ℕ} (n : ℕ) : (ZMod m) :=
-    Fib.fib_fast n
+  def fib [mod : Mod] (n : ℕ) : ↑mod :=
+    ((fun p : ℕ × ℕ => (p.snd, p.fst + p.snd))^[n] (0, 1)).fst
+  ```
+- Showing relations between the entries of powers of the matrix $Q$ above:
+  ```lean
+  structure Q_entries [Mod] (n : ℕ) where
+    Q_11_10 : (Q ^ (n + 1)) 1 1 = (Q ^ n) 1 0
+    Q_11_01 : (Q ^ (n + 1)) 1 1 = (Q ^ n) 0 1
+    Q_11_00 : (Q ^ (n + 2)) 1 1 = (Q ^ n) 0 0
+    Q_10_01 : (Q ^ n) 1 0 = (Q ^ n) 0 1
   ```
 - Showing that the modular Fibonacci sequence is periodic ([Pisano Period]):
   ```lean
-  theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] :
-    ∃ c > 0, Function.Periodic (@fib m) c := ...
+  theorem fib_period_even [Mod] [hm : Fact (Mod.n > 2)] (p : ℕ) (hp : Function.Periodic fib p) : Even p := ...
   ```
 
 ### To Do
 - Show that the Pisano Period is bounded by 6 times the modulus:
   ```lean
-  theorem fib_periodic {m : ℕ} [hm : Fact (m > 1)] :
-    ∃ 0 < c, c ≤ 6 * m ∧ Function.Periodic (@fib m) c := ...
+  theorem fib_period_bound [Mod] [hm : Fact (Mod.n ≥ 1)] (p : ℕ) (hp : Function.Periodic fib p) : p ≤ 6 * Mod.n := ...
   ```
 
 [Lean]: https://github.com/leanprover/lean4
