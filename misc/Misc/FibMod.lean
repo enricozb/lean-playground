@@ -7,6 +7,17 @@ import Mathlib.Init.Function
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.LinearAlgebra.Matrix.ZPow
 
+/-!
+# Fibonacci Sequence Mod `m` and Pisano Periods
+
+Contains a definition of the Fibonacci sequence modulo `m`. Also
+provides proofs around the periodicity `p(m)` of `fib (mod m ≥ 1)` and properties
+of those periods.
+
+The `Mod` typeclass is used to provide the modulus of these definitions and theorems
+implicitly.
+-/
+
 namespace FibMod
 
 /-- Wrapper class for adding modulus to the type class system.
@@ -202,9 +213,8 @@ lemma fib_period_iff_Q_order [Mod] (p : ℕ): Function.Periodic fib p ↔ Q ^ p 
 
   exact ⟨mp, mpr⟩
 
-/--
-`fib (mod n ≥ 1)` is periodic for some period `p(n) > 0`.
-While this theorem does not prove this, the period is bounded by `p(n) ≤ 6 * m`.
+/-- `fib (mod m ≥ 1)` is periodic for some period `p(m) > 0`.
+While this theorem does not prove this, the period is bounded by `p(m) ≤ 6 * m`.
 -/
 theorem fib_periodic [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Function.Periodic fib p := by
   simp [fib_eq_fib_pow_mat, fib_pow_mat]
@@ -213,7 +223,7 @@ theorem fib_periodic [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Function.Periodic f
   apply And.intro h_p_gt_zero
   simp only [h_Q_pow_p_eq_one, pow_add, mul_one, pow_one, forall_const]
 
-/-- `FibMod.fib` having period `p` implies `p` is even. -/
+/-- Periods `p(m)` of `fib (mod m > 2)` are even. -/
 theorem fib_period_even [Mod] [hm : Fact (Mod.n > 2)] (p : ℕ) (hp : Function.Periodic fib p) : Even p := by
   have h_order : Q ^ p = 1 := (fib_period_iff_Q_order p).mp hp
   have h_det_pow : Q.det ^ p = 1 := by rw [←Matrix.det_pow Q p, h_order, Matrix.det_one]
