@@ -6,6 +6,7 @@ import Mathlib.Data.ZMod.Basic
 import Mathlib.Init.Function
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.LinearAlgebra.Matrix.ZPow
+import Mathlib.Order.WellFoundedSet
 
 /-!
 # Fibonacci Sequence Mod `m` and Pisano Periods
@@ -30,6 +31,10 @@ instance : Coe Mod ℕ := ⟨fun mod => mod.n⟩
 
 /-- Coerce `mod : Mod` into `ZMod mod.n`. -/
 instance : Coe Mod Type := ⟨fun mod => ZMod mod.n⟩
+
+/-- `Mod` from a `Nat`. -/
+instance : OfNat Mod n where
+  ofNat := ⟨n⟩
 
 /-- Matrix used in the Fibonacci sequence. -/
 def Q [mod : Mod] : Matrix (Fin 2) (Fin 2) ↑mod := ![
@@ -231,5 +236,40 @@ theorem fib_period_even [Mod] [hm : Fact (Mod.n > 2)] (p : ℕ) (hp : Function.P
   rw [neg_one_pow_eq_one_iff_even] at h_det_pow
   exact h_det_pow
   exact @ZMod.neg_one_ne_one Mod.n hm
+
+/-- Pisano periods for `m ≥ 1`. -/
+noncomputable def pisano_ge_one (m : ℕ) {hm : m ≥ 1} : ℕ := by
+    let mod : Mod := Mod.mk m
+    have : Fact (mod.n ≥ 1) := Fact.mk hm
+
+    exact Classical.choose (fib_periodic)
+
+/-- The [Pisano Period](https://en.wikipedia.org/wiki/Pisano_period).
+This is the period of the Fibonacci sequence mod `m ≥ 1`, or `0` if `m = 0`. -/
+noncomputable def pisano (m : ℕ) : ℕ := 
+  if h : m ≥ 1 then
+    @pisano_ge_one m h
+  else
+    0
+
+def pisano_ge_one_eq (m : ℕ) {hm : m ≥ 1} : pisano m = @pisano_ge_one m hm := by
+  rw [pisano, dif_pos hm]
+
+theorem pisano_is_period [Mod] [Fact (Mod.n ≥ 1)] : Function.Periodic fib (pisano Mod.n) := by
+  simp [pisano]
+
+theorem pisano_one : pisano 1 = 1 := by
+  let mod : Mod := Mod.mk 1
+  have hp : Function.Periodic fib 1 := by sorry
+  sorry
+
+theorem pisano_two : pisano 2 = 3 := sorry
+
+theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
+  let mod : Mod := Mod.mk m
+  let hm : Fact (mod.n > 2) := Fact.mk hm
+
+  have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_of_lt hm.out)
+  exact fib_period_even (pisano m) pisano_is_period
 
 end FibMod
