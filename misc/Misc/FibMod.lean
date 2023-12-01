@@ -87,7 +87,7 @@ lemma Q_exists_pow_eq [Mod] [h_mod_ge_one : Fact (Mod.n ≥ 1)] : ∃ a b, a > b
       all_goals fin_cases i
       all_goals fin_cases j
       all_goals { rw [h]; simp only }
-      
+
     exact ⟨2, 1, (by simp only : 2 > 1), h⟩
 
   -- case Mod.n ≠ 1
@@ -99,7 +99,7 @@ lemma Q_exists_pow_eq [Mod] [h_mod_ge_one : Fact (Mod.n ≥ 1)] : ∃ a b, a > b
     have hQ_pow_not_inj : ¬Function.Injective (fun n => Q ^ n) := not_injective_infinite_finite _
     simp only [Function.Injective, not_forall, exists_prop] at hQ_pow_not_inj
     have ⟨a, b, hQ_pow_a_eq_Q_pow_b, ha_ne_b⟩ := hQ_pow_not_inj
-    have ha_b_order : b > a ∨ a > b := Nat.lt_or_gt_of_ne ha_ne_b    
+    have ha_b_order : b > a ∨ a > b := Nat.lt_or_gt_of_ne ha_ne_b
     cases ha_b_order with
     | inl hb_gt_a => exact ⟨b, a, hb_gt_a, hQ_pow_a_eq_Q_pow_b.symm⟩
     | inr ha_gt_b => exact ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩
@@ -107,7 +107,7 @@ lemma Q_exists_pow_eq [Mod] [h_mod_ge_one : Fact (Mod.n ≥ 1)] : ∃ a b, a > b
 /-- `Q` has finite order. -/
 theorem Q_order_finite [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Q ^ p = 1 := by
   have ⟨a, b, ha_gt_b, hQ_pow_a_eq_Q_pow_b⟩ := Q_exists_pow_eq
-  have a_ge_b : a ≥ b := Nat.le_of_lt ha_gt_b 
+  have a_ge_b : a ≥ b := Nat.le_of_lt ha_gt_b
   have ha_sub_b_gt_zero : a - b > 0 := by simp only [ge_iff_le, gt_iff_lt, tsub_pos_iff_lt, ha_gt_b]
   have hQ_pow_c_eq_one : Q ^ (a - b) = 1 := by
     simp only [
@@ -115,7 +115,7 @@ theorem Q_order_finite [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Q ^ p = 1 := by
       Matrix.pow_sub' Q isUnit_Q_det a_ge_b, ←hQ_pow_a_eq_Q_pow_b,
       Matrix.det_pow, ←Matrix.pow_sub' Q isUnit_Q_det (by rfl)
     ]
-    
+
   exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
 
 /-- Equivalences between entries of powers `Q`. -/
@@ -266,14 +266,14 @@ theorem pisano_pos_iff (m : ℕ) {hm : m ≥ 1} (p : ℕ) :
       rw [←hp_is_min]
       apply Set.IsWf.not_lt_min
       exact hp'mem
-    
+
     exact hnot_p'_lt_p hp'_lt_p
-  
+
   · intro ⟨hp_gt_zero, hp_period, hp_min⟩
     let p' := @pisano_pos m hm
     have hp' : p' = @pisano_pos m hm := rfl
     have hp'_mem : p' ∈ periods := by apply Set.IsWf.min_mem
-      
+
     rw [←hp']
     have hp'_gt_zero : p' > 0 := hp'_mem.left
     have hp'_period : Function.Periodic fib p' := hp'_mem.right
@@ -292,7 +292,7 @@ theorem pisano_pos_iff (m : ℕ) {hm : m ≥ 1} (p : ℕ) :
 
 /-- The [Pisano Period](https://en.wikipedia.org/wiki/Pisano_period).
 This is the period of the Fibonacci sequence mod `m ≥ 1`, or `0` if `m = 0`. -/
-noncomputable def pisano (m : ℕ) : ℕ := 
+noncomputable def pisano (m : ℕ) : ℕ :=
   if h : m ≥ 1 then
     @pisano_pos m h
   else
