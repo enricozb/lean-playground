@@ -7,6 +7,8 @@ import Mathlib.Init.Function
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.LinearAlgebra.Matrix.ZPow
 import Mathlib.Order.WellFoundedSet
+import Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup
+import «Misc».Utils
 
 /-!
 # Fibonacci Sequence Mod `m` and Pisano Periods
@@ -117,6 +119,9 @@ theorem Q_order_finite [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Q ^ p = 1 := by
     ]
 
   exact ⟨a - b, ha_sub_b_gt_zero, hQ_pow_c_eq_one⟩
+
+noncomputable def Q_order [Mod] [Fact (Mod.n ≥ 1)] : ℕ := 
+  Set.IsWf.min wellFounded_lt Q_order_finite
 
 /-- Equivalences between entries of powers `Q`. -/
 structure Q_entries [Mod] (n : ℕ) where
@@ -241,7 +246,9 @@ These are defined as the minimum non-zero period of `fib`. -/
 noncomputable def pisano_pos (m : ℕ) {hm : m ≥ 1} : ℕ :=
     Set.IsWf.min wellFounded_lt (@fib_periodic (Mod.mk m) (Fact.mk hm))
 
-/-- Pisano periods for `m ≥ 1` are the minimum period of `fib`. -/
+/-- Pisano periods for `m ≥ 1` are the minimum period of `fib`.
+TODO: this should be generalized to any `Set.IsWf.min`.
+-/
 theorem pisano_pos_iff (m : ℕ) {hm : m ≥ 1} (p : ℕ) :
   @pisano_pos m hm = p ↔
     p > 0 ∧
@@ -309,6 +316,27 @@ theorem pisano_is_period [Mod] [hm : Fact (Mod.n ≥ 1)] : (pisano Mod.n > 0) �
   rw [Set.mem_setOf_eq] at hmem
   exact hmem
 
+/-- Pisano of `m ≥ 1` is equal to the order of `Q (mod m)`. -/
+theorem pisano_eq_order [Mod] [hm : Fact (Mod.n ≥ 1)] : pisano Mod.n = Q_order := by
+  simp [pisano, dif_pos hm.out]
+  let orders := {p : ℕ | p > 0 ∧ Q ^ p = 1}
+  let periods := {p : ℕ | p > 0 ∧ Function.Periodic fib p}
+  have hsets : orders = periods := by 
+    ext p
+    apply Iff.intro
+    · intro hp_in_orders
+      simp at hp_in_orders
+      rw [←fib_period_iff_Q_order] at hp_in_orders
+      exact hp_in_orders
+    · intro hp_in_periods
+      rw [Set.mem_setOf_eq] at hp_in_periods
+      rw [fib_period_iff_Q_order] at hp_in_periods
+      exact hp_in_periods
+
+  simp only [gt_iff_lt, Function.Periodic] at hsets
+  apply Utils.set_iswf_min_eq
+  exact hsets.symm
+
 theorem pisano_one : pisano 1 = 1 := by
   rw [pisano, dif_pos (by rfl), pisano_pos_iff]
   apply And.intro Nat.one_pos
@@ -323,11 +351,27 @@ theorem pisano_one : pisano 1 = 1 := by
   intro n
   simp only [Fin.eq_zero]
 
+theorem pisano_two : pisano 2 = 3 := by
+  let mod : Mod := Mod.mk 2
+  have : Fact (Mod.n ≥ 1) := by apply Fact.mk; simp only [ge_iff_le]
+  rw [(by rfl : 2 = Mod.n), pisano_eq_order, Q_order]
+  sorry
+
 theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   let mod : Mod := Mod.mk m
   let hm : Fact (mod.n > 2) := Fact.mk hm
 
   have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_of_lt hm.out)
   exact fib_period_even (pisano m) pisano_is_period.right
+
+theorem pisano_bounded (m : ℕ) : pisano m ≤ 6 * m := sorry
+
+theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) = 3 * 2 ^ (k - 1) := by
+  let mod : Mod := Mod.mk (2 ^ k)
+  have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_two_pow k)
+  have : 2 ^ k = Mod.n := rfl
+  rw [this, pisano_eq_order]
+
+theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) = 4 * (5 ^ k) := sorry
 
 end FibMod
