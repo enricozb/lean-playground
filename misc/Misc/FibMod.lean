@@ -247,7 +247,6 @@ noncomputable def pisano_pos (m : ℕ) {hm : m ≥ 1} : ℕ :=
     Set.IsWf.min wellFounded_lt (@fib_periodic (Mod.mk m) (Fact.mk hm))
 
 /-- Pisano periods for `m ≥ 1` are the minimum period of `fib`.
-TODO: this should be generalized to any `Set.IsWf.min`.
 -/
 theorem pisano_pos_iff (m : ℕ) {hm : m ≥ 1} (p : ℕ) :
   @pisano_pos m hm = p ↔
@@ -257,45 +256,26 @@ theorem pisano_pos_iff (m : ℕ) {hm : m ≥ 1} (p : ℕ) :
 
   let mod : Mod := Mod.mk m
   have : Fact (mod.n ≥ 1) := Fact.mk hm
-  let periods := {p : ℕ | p > 0 ∧ Function.Periodic fib p }
+  let periods := {p : ℕ | p > 0 ∧ Function.Periodic fib p}
+
+  have h := @Utils.set_iswf_min_iff periods wellFounded_lt (@fib_periodic (Mod.mk m) (Fact.mk hm)) p
 
   apply Iff.intro
-  · intro hp_is_min
-    rw [pisano_pos] at hp_is_min
-    have hp_mem : p ∈ periods := by
-      rw [←hp_is_min]
-      apply Set.IsWf.min_mem
-    apply And.intro hp_mem.left
-    apply And.intro hp_mem.right
-    intro p' hp'_lt_p hp'_gt_zero hp'_period
-    have hp'mem : p' ∈ periods := ⟨hp'_gt_zero, hp'_period⟩
-    have hnot_p'_lt_p : ¬p' < p := by
-      rw [←hp_is_min]
-      apply Set.IsWf.not_lt_min
-      exact hp'mem
-
-    exact hnot_p'_lt_p hp'_lt_p
-
-  · intro ⟨hp_gt_zero, hp_period, hp_min⟩
-    let p' := @pisano_pos m hm
-    have hp' : p' = @pisano_pos m hm := rfl
-    have hp'_mem : p' ∈ periods := by apply Set.IsWf.min_mem
-
-    rw [←hp']
-    have hp'_gt_zero : p' > 0 := hp'_mem.left
-    have hp'_period : Function.Periodic fib p' := hp'_mem.right
-    -- assume p' ≠ p, then p' < p or p < p'
-    apply Classical.byContradiction; intro h_ne_p; apply Or.elim (Nat.lt_or_gt.1 h_ne_p)
-
-    · intro hp'_lt_p
-      exact hp_min p' hp'_lt_p hp'_gt_zero hp'_period
-
-    · intro hp_lt_p'
-      -- show that p' = pisano_pos m implies it is the minimum by Set.IsWf.min
-      have h_not_p_lt_p' : ¬ p < p' := by
-        apply Set.IsWf.not_lt_min
-        exact ⟨hp_gt_zero, hp_period⟩
-      exact h_not_p_lt_p' hp_lt_p'
+  · intro hp
+    have ⟨hpmem, hpmin⟩ := h.mp hp
+    apply And.intro hpmem.left
+    apply And.intro hpmem.right
+    intro p' hp'_lt_p hp'_gt_zero
+    simp only [Function.Periodic, Set.mem_setOf_eq, not_and, not_forall] at hpmin
+    simp only [Function.Periodic, not_forall]
+    exact hpmin p' hp'_lt_p hp'_gt_zero
+  
+  · intro hp
+    have hpmem : p ∈ periods := ⟨hp.left, hp.right.left⟩
+    have hpmin : ∀ p' < p, p' ∉ periods := by
+      intro p' hp'_lt_p ⟨hp'_lt_zero, hp'_period⟩
+      exact hp.right.right p' hp'_lt_p hp'_lt_zero hp'_period
+    exact h.mpr ⟨hpmem, hpmin⟩
 
 /-- The [Pisano Period](https://en.wikipedia.org/wiki/Pisano_period).
 This is the period of the Fibonacci sequence mod `m ≥ 1`, or `0` if `m = 0`. -/
@@ -354,8 +334,35 @@ theorem pisano_one : pisano 1 = 1 := by
 theorem pisano_two : pisano 2 = 3 := by
   let mod : Mod := Mod.mk 2
   have : Fact (Mod.n ≥ 1) := by apply Fact.mk; simp only [ge_iff_le]
-  rw [(by rfl : 2 = Mod.n), pisano_eq_order, Q_order]
-  sorry
+  rw [(by rfl : 2 = Mod.n), pisano_eq_order, Q_order, Utils.set_iswf_min_iff]
+  apply And.intro
+
+  -- (Q ^ 3 = 1) aka 3 ∈ fun x => x > 0 ∧ Q ^ x = 1
+  · rw [Set.mem_def]
+    simp only [true_and]
+    rw [Q_pow_succ, Q_pow_two, pow_one]
+    ext; rename_i i j
+    fin_cases i; all_goals fin_cases j
+    all_goals simp
+    
+  -- (Q ^ p' ≠ 1 for p' < 3) aka  ∀ p' < 3, p' ∉ fun x => x > 0 ∧ Q ^ x = 1
+  · intro p' hp'_lt_three hp'mem
+    have hp'_gt_zero : p' > 0 := hp'mem.left
+    match p' with
+    | 1 =>
+      have ⟨_, hQ⟩ := hp'mem
+      rw [pow_one] at hQ
+      have : Q 1 1 = 1 := by rw [hQ]; rfl
+      rw [Q_11] at this
+      simp only [zero_ne_one] at this
+      
+    | 2 =>
+      have ⟨_, hQ⟩ := hp'mem
+      rw [Q_pow_two] at hQ
+      have heq₁ : (Q + 1) 1 0 = 0 := by rw [hQ]; rfl
+      have heq₂ : (Q + 1) 1 0 = 1 := by simp [Matrix.add_apply, Q_10]
+      rw [heq₂] at heq₁
+      simp only [one_ne_zero] at heq₁
 
 theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   let mod : Mod := Mod.mk m
@@ -364,14 +371,15 @@ theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_of_lt hm.out)
   exact fib_period_even (pisano m) pisano_is_period.right
 
-theorem pisano_bounded (m : ℕ) : pisano m ≤ 6 * m := sorry
-
 theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) = 3 * 2 ^ (k - 1) := by
   let mod : Mod := Mod.mk (2 ^ k)
   have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_two_pow k)
   have : 2 ^ k = Mod.n := rfl
   rw [this, pisano_eq_order]
+  sorry
 
 theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) = 4 * (5 ^ k) := sorry
+
+theorem pisano_bounded (m : ℕ) : pisano m ≤ 6 * m := sorry
 
 end FibMod
