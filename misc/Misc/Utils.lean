@@ -2,7 +2,7 @@ import Mathlib.Order.WellFoundedSet
 
 namespace Utils
 
-theorem dvd_le (a b : ℕ) (hb : b ≠ 0) (hab : a ∣ b) : a ≤ b := by
+theorem dvd_le {a b : ℕ} (hb : b ≠ 0) (hab : a ∣ b) : a ≤ b := by
   have ⟨c, hc⟩ := hab
   rw [hc]
   conv => lhs; rw [←mul_one a]

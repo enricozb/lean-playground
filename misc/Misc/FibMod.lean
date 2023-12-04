@@ -166,6 +166,7 @@ lemma Q_entry_period_is_order [Mod] (h : ∀ (n : ℕ), (Q ^ (n + p + 1)) 1 1 = 
 def fib [mod : Mod] (n : ℕ) : ↑mod := ((fun p : ℕ × ℕ => (p.snd, p.fst + p.snd))^[n] (0, 1)).fst
 
 /-- The Fibonacci sequence defined from powers of `Q`. -/
+@[reducible]
 def fib_pow_mat [mod : Mod] (n : ℕ) : ↑mod := (Q ^ (n + 1)) 1 1
 
 /-- Whether a function is the Fibonacci sequence. -/
@@ -343,11 +344,10 @@ theorem pisano_two : pisano 2 = 3 := by
     rw [Q_pow_succ, Q_pow_two, pow_one]
     ext; rename_i i j
     fin_cases i; all_goals fin_cases j
-    all_goals simp
+    all_goals rfl
     
-  -- (Q ^ p' ≠ 1 for p' < 3) aka  ∀ p' < 3, p' ∉ fun x => x > 0 ∧ Q ^ x = 1
+  -- (Q ^ p' ≠ 1 for p' < 3) aka ∀ p' < 3, p' ∉ fun x => x > 0 ∧ Q ^ x = 1
   · intro p' hp'_lt_three hp'mem
-    have hp'_gt_zero : p' > 0 := hp'mem.left
     match p' with
     | 1 =>
       have ⟨_, hQ⟩ := hp'mem
@@ -364,7 +364,25 @@ theorem pisano_two : pisano 2 = 3 := by
       rw [heq₂] at heq₁
       simp only [one_ne_zero] at heq₁
 
-theorem pisano_five : pisano 5 = 4 := by sorry
+theorem pisano_five : pisano 5 = 20 := by
+  let mod : Mod := Mod.mk 5
+  have : Fact (Mod.n ≥ 1) := by apply Fact.mk; simp only [ge_iff_le]
+  rw [(by rfl : 5 = Mod.n), pisano_eq_order, Q_order, Utils.set_iswf_min_iff]
+  apply And.intro
+
+  -- (Q ^ 20 = 1) aka 20 ∈ fun x => x > 0 ∧ Q ^ x = 1
+  · rw [Set.mem_def]
+    simp only [true_and]
+    ext; rename_i i j
+    fin_cases i; all_goals fin_cases j
+    all_goals {
+      simp only [Fin.zero_eta, Fin.mk_one, ne_eq, Matrix.one_apply_ne, Matrix.one_apply_eq]
+      rfl
+    }
+
+  -- (Q ^ p' ≠ 1 for p' < 20) aka ∀ p' < 20, p' ∉ fun x => x > 0 ∧ Q ^ x = 1
+  · intro p' hp'_lt_20 hp'mem
+    sorry
 
 theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   let mod : Mod := Mod.mk m
@@ -380,28 +398,24 @@ theorem pisano_coprime (a b : ℕ) (hab : Nat.Coprime a b) : pisano (a * b) = pi
   sorry
 
 theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) ≤ 3 * 2 ^ (k - 1) := by
-  have ⟨c, hc⟩ : pisano (2 ^ k) ∣ 3 * 2 ^ (k - 1) := by
+  have hdvd : pisano (2 ^ k) ∣ 3 * 2 ^ (k - 1) := by
     rw [←pisano_two, mul_comm]
     exact pisano_prime_pow 2 k hk
   
-  -- TODO: use Utils.dvd_le
-  rw [hc]
-  have hc_ge_one : c ≥ 1 := by sorry
+  have hne_zero : 3 * 2 ^ (k - 1) ≠ 0 :=
+    mul_ne_zero (by simp only : 3 ≠ 0) (pow_ne_zero (k - 1) (by simp only : 2 ≠ 0)) 
+
+  exact Utils.dvd_le hne_zero hdvd
     
-  conv => lhs; rw [←mul_one (pisano (2 ^ k))]
-  exact Nat.mul_le_mul_left (pisano (2 ^ k)) hc_ge_one
-    
-theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) ≤ 4 * (5 ^ (k - 1)) := by
-  have ⟨c, hc⟩ : pisano (5 ^ k) ∣ 4 * 5 ^ (k - 1) := by
+theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) ≤ 20 * (5 ^ (k - 1)) := by  
+  have hdvd : pisano (5 ^ k) ∣ 20 * 5 ^ (k - 1) := by
     rw [←pisano_five, mul_comm]
     exact pisano_prime_pow 5 k hk
   
-  -- TODO: use Utils.dvd_le
-  rw [hc]
-  have hc_ge_one : c ≥ 1 := by sorry
-    
-  conv => lhs; rw [←mul_one (pisano (5 ^ k))]
-  exact Nat.mul_le_mul_left (pisano (5 ^ k)) hc_ge_one
+  have hne_zero : 20 * 5 ^ (k - 1) ≠ 0 :=
+    mul_ne_zero (by simp only : 20 ≠ 0) (pow_ne_zero (k - 1) (by simp only : 5 ≠ 0)) 
+
+  exact Utils.dvd_le hne_zero hdvd
 
 theorem pisano_bounded (m : ℕ) : pisano m ≤ 6 * m := sorry
 
