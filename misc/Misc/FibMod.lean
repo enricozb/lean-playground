@@ -364,6 +364,8 @@ theorem pisano_two : pisano 2 = 3 := by
       rw [heq₂] at heq₁
       simp only [one_ne_zero] at heq₁
 
+theorem pisano_five : pisano 5 = 4 := by sorry
+
 theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   let mod : Mod := Mod.mk m
   let hm : Fact (mod.n > 2) := Fact.mk hm
@@ -371,14 +373,33 @@ theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
   have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_of_lt hm.out)
   exact fib_period_even (pisano m) pisano_is_period.right
 
-theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) = 3 * 2 ^ (k - 1) := by
-  let mod : Mod := Mod.mk (2 ^ k)
-  have : Fact (Mod.n ≥ 1) := Fact.mk (Nat.one_le_two_pow k)
-  have : 2 ^ k = Mod.n := rfl
-  rw [this, pisano_eq_order]
+theorem pisano_prime_pow (p k : ℕ) (hk : k ≥ 1) : pisano (p ^ k) ∣ p ^ (k - 1) * pisano p := sorry
+
+theorem pisano_coprime (a b : ℕ) (hab : Nat.Coprime a b) : pisano (a * b) = pisano a * pisano b := by
+  -- chinese remainder theorem
   sorry
 
-theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) = 4 * (5 ^ k) := sorry
+theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) ≤ 3 * 2 ^ (k - 1) := by
+  have ⟨c, hc⟩ : pisano (2 ^ k) ∣ 3 * 2 ^ (k - 1) := by
+    rw [←pisano_two, mul_comm]
+    exact pisano_prime_pow 2 k hk
+  
+  rw [hc]
+  have hc_ge_one : c ≥ 1 := by sorry
+    
+  conv => lhs; rw [←mul_one (pisano (2 ^ k))]
+  exact Nat.mul_le_mul_left (pisano (2 ^ k)) hc_ge_one
+    
+theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) ≤ 4 * (5 ^ (k - 1)) := by
+  have ⟨c, hc⟩ : pisano (5 ^ k) ∣ 4 * 5 ^ (k - 1) := by
+    rw [←pisano_five, mul_comm]
+    exact pisano_prime_pow 5 k hk
+  
+  rw [hc]
+  have hc_ge_one : c ≥ 1 := by sorry
+    
+  conv => lhs; rw [←mul_one (pisano (5 ^ k))]
+  exact Nat.mul_le_mul_left (pisano (5 ^ k)) hc_ge_one
 
 theorem pisano_bounded (m : ℕ) : pisano m ≤ 6 * m := sorry
 
