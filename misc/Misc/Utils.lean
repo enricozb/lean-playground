@@ -2,6 +2,19 @@ import Mathlib.Order.WellFoundedSet
 
 namespace Utils
 
+theorem dvd_le (a b : ℕ) (hb : b ≠ 0) (hab : a ∣ b) : a ≤ b := by
+  have ⟨c, hc⟩ := hab
+  rw [hc]
+  conv => lhs; rw [←mul_one a]
+  apply Nat.mul_le_mul
+  exact Nat.le_refl a
+  show 0 < c
+  apply Classical.byContradiction
+  intro hnot_c_gt_zero
+  have hc_eq_zero : c = 0 := Nat.eq_zero_of_not_pos hnot_c_gt_zero
+  rw [hc_eq_zero, mul_zero] at hc
+  exact hb hc
+
 /-- If two sets are equal then their `Set.IsWf.min` are equal.
 TODO: this should be generalized to any `α` with a `Preorder`. -/
 theorem set_iswf_min_eq

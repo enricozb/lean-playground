@@ -384,6 +384,7 @@ theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) ≤ 3 * 2 ^ (k 
     rw [←pisano_two, mul_comm]
     exact pisano_prime_pow 2 k hk
   
+  -- TODO: use Utils.dvd_le
   rw [hc]
   have hc_ge_one : c ≥ 1 := by sorry
     
@@ -395,6 +396,7 @@ theorem pisano_pow_five (k : ℕ) {hk : k ≥ 1} : pisano (5 ^ k) ≤ 4 * (5 ^ (
     rw [←pisano_five, mul_comm]
     exact pisano_prime_pow 5 k hk
   
+  -- TODO: use Utils.dvd_le
   rw [hc]
   have hc_ge_one : c ≥ 1 := by sorry
     
