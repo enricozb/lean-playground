@@ -123,6 +123,16 @@ theorem Q_order_finite [Mod] [Fact (Mod.n ≥ 1)] : ∃ p > 0, Q ^ p = 1 := by
 noncomputable def Q_order [Mod] [Fact (Mod.n ≥ 1)] : ℕ := 
   Set.IsWf.min wellFounded_lt Q_order_finite
 
+noncomputable def Q_order_coprime {a b : ℕ} (ha : a ≥ 1) (hb : b ≥ 1) (hab : Nat.Coprime a b) :
+  (@Q_order (Mod.mk (a * b)) (Fact.mk (one_le_mul ha hb))) =
+    (@Q_order (Mod.mk a) (Fact.mk ha)) *
+    (@Q_order (Mod.mk b) (Fact.mk hb)) := by
+    
+    sorry
+
+  -- apply Classical.byContradiction; intro hne; apply Or.elim (Nat.lt_or_gt.1 hne)
+  
+
 /-- Equivalences between entries of powers `Q`. -/
 structure Q_entries [Mod] (n : ℕ) where
   Q_11_10 : (Q ^ (n + 1)) 1 1 = (Q ^ n) 1 0
@@ -318,6 +328,8 @@ theorem pisano_eq_order [Mod] [hm : Fact (Mod.n ≥ 1)] : pisano Mod.n = Q_order
   apply Utils.set_iswf_min_eq
   exact hsets.symm
 
+theorem pisano_zero : pisano 0 = 0 := rfl
+
 theorem pisano_one : pisano 1 = 1 := by
   rw [pisano, dif_pos (by rfl), pisano_pos_iff]
   apply And.intro Nat.one_pos
@@ -393,9 +405,27 @@ theorem pisano_even (m : ℕ) {hm : m > 2}: Even (pisano m) := by
 
 theorem pisano_prime_pow (p k : ℕ) (hk : k ≥ 1) : pisano (p ^ k) ∣ p ^ (k - 1) * pisano p := sorry
 
-theorem pisano_coprime (a b : ℕ) (hab : Nat.Coprime a b) : pisano (a * b) = pisano a * pisano b := by
-  -- chinese remainder theorem
-  sorry
+theorem pisano_coprime {a b : ℕ} (hab : Nat.Coprime a b) : pisano (a * b) = pisano a * pisano b := by
+  by_cases ha : a < 1
+  · have ha : a = 0 := Nat.lt_one_iff.mp ha
+    simp only [ha, zero_mul, pisano_zero]
+
+  by_cases hb : b < 1
+  · have hb : b = 0 := Nat.lt_one_iff.mp hb
+    simp only [hb, mul_zero, pisano_zero]
+  
+  have ha : a ≥ 1 := Nat.not_lt.mp ha
+  have hb : b ≥ 1 := Nat.not_lt.mp hb
+
+  let modab : Mod := Mod.mk (a * b)
+  have : Fact (a * b ≥ 1) := Fact.mk (one_le_mul ha hb)
+
+  rw [
+    (by rfl : a * b = modab.n), pisano_eq_order, @Q_order_coprime a b ha hb hab,
+    ←(@pisano_eq_order (Mod.mk a) (Fact.mk ha)), ←(@pisano_eq_order (Mod.mk b) (Fact.mk hb)),
+  ]
+
+  rfl
 
 theorem pisano_pow_two (k : ℕ) {hk : k ≥ 1} : pisano (2 ^ k) ≤ 3 * 2 ^ (k - 1) := by
   have hdvd : pisano (2 ^ k) ∣ 3 * 2 ^ (k - 1) := by

@@ -8,3 +8,10 @@ import «Misc».PrimeFactorDensity
 
 -- Fibonacci and Fibonacci mod m periodicity (pisano periods)
 import «Misc».Fibonacci
+
+-- TODO: show that there exists an irrational a > 0 such that a^(1/a) is rational
+--       show an explicit example
+import «Misc».Reals
+
+-- Some basic first order logic theorems
+import «Misc».FirstOrderLogic
