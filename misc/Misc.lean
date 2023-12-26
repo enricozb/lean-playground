@@ -14,4 +14,4 @@ import «Misc».Fibonacci
 import «Misc».Reals
 
 -- Some basic first order logic theorems
-import «Misc».FirstOrderLogic
+import «Misc».Logic

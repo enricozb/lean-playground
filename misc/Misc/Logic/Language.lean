@@ -1,8 +1,12 @@
 /-
-  Some exercises from
+  An initial attempt at some exercises from
     A Concise Introduction to Mathematical Logic
     Springer; 3rd ed. 2010 edition (December 17, 2009)
     ISBN-10 : 1441912207
+
+  I think the way I designed these structures isn't great, especially `Interpretation`.
+  This makes it difficult to prove things about specific interpretations, so I'll just
+  leave the file here as a learning.
 
   Resources:
     - https://github.com/leanprover-community/mathlib4/blob/de998ec5efecfd02da10d832018622a6488a6565//Mathlib/ModelTheory/Basic.lean#L60-L64
@@ -13,6 +17,8 @@
 -/
 
 import Mathlib.Data.Nat.Basic
+import Mathlib.Tactic.Basic
+import «Misc».Utils
 
 section Utilities
 
@@ -105,18 +111,14 @@ def Signature.Interpretation.formula {S : Signature} {I : S.Interpretation M} (�
     func_interpreted ψs_interpreted
 
 /--
-  A signature is _functional complete_ for some type `M` if there exists
-  an interpretation of the signature such that all functions `Vec n M → M`
-  can be represented by a formula `φ` with `n` unbound variables.
+  An interpretation with type `M` is _functional complete_ if all
+  functions `f : Vec n M → M` can be represented by a formula `φ`
+  with `n` unbound variables.
 -/
-def Signature.FunctionalComplete {S : Signature} (M : Type u) :=
-  ∃ (I : S.Interpretation M), -- there exists an interpretation
+def Signature.Interpretation.FunctionalComplete {S : Signature} {I : S.Interpretation M} :=
   ∀ {n} (f : Vec n M → M),    -- for all functions `f : Vec n M → M`
   ∃ (φ : S.Formula n),        -- there exists a formula `φ`
     I.formula φ = f           -- that, when interpreted, equals `f`
-
-/- Boolean Functions and Formulas -/
-namespace Chapter1_1
 
 /-- The set of boolean functions of arity `n`. -/
 def B (n : ℕ) := Vec n Bool → Bool
@@ -124,14 +126,34 @@ def B (n : ℕ) := Vec n Bool → Bool
 /-- The set of boolean formulas of arity `n`. -/
 def ℱₙ (n : ℕ) := (Signature.mk₁₂ ⟦'¬'⟧ ⟦'∨', '∧'⟧).Formula n
 
-def S_noa := (Signature.mk₁₂ ⟦'¬'⟧ ⟦'∨', '∧'⟧)
-
 /--
   The set of all boolean formulas.
-  This "double counts" formulas, as `¬ p` is in `ℱ n` for all `n > 0`.
+  This "double counts" formulas, as `¬ p` is in `ℱₙ n` for all `n > 0`.
 -/
 def ℱ := Σ n, ℱₙ n
 
-theorem S_noa_functional_complete : S_noa.FunctionalComplete Prop := sorry
+/- Boolean Functions and Formulas -/
+namespace Chapter1_1
+
+/-- Signature of unary not (`¬`), and binary or/and (`∨`, `∧`). -/
+@[simp]
+def S_noa := (Signature.mk₁₂ ⟦'¬'⟧ ⟦'∨', '∧'⟧)
+
+def S_noa_I : S_noa.Interpretation Bool := ⟨fun
+  -- no constants in this signature
+  | 0 => fun c => by contradiction 
+  | 1 => fun _ value => Bool.not (value 0)
+  | 2 => fun ⟨op, h_op⟩ values =>
+    have h_op : op = '∨' ∨ op = '∧' := h_op
+    if h_op_or : op = '∨' then Bool.or (values 0) (values 1) else
+    if h_op_and : op = '∧' then Bool.and (values 0) (values 1) else by
+    have : ¬(op = '∨' ∨ op = '∧') := not_or.mpr ⟨h_op_or, h_op_and⟩
+    contradiction
+
+  -- no functions of arity `n ≥ 3` 
+  | n+3 => fun c => by contradiction 
+⟩
+
+-- theorem S_noa_functional_complete : S_noa_I.FunctionalComplete := sorry
 
 end Chapter1_1
