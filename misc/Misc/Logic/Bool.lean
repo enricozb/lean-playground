@@ -1,5 +1,7 @@
 import Mathlib.Init.Set
+import Mathlib.Data.Set.Basic
 import Mathlib.Data.Nat.Basic
+import Mathlib.Tactic.LibrarySearch
 
 /--
   A macro definition of a vector, modeled as a `(Fin n → α)`.
@@ -42,6 +44,7 @@ inductive Signature.Formula {S : Signature} (n : ℕ) where
 /--
   The _valuation_ of a formula, given the values of the variables.
 -/
+@[reducible]
 def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Prop) : Prop :=
   match φ with
   | var i => vars i
@@ -56,7 +59,8 @@ def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Pro
 def Signature.Sentence {S : Signature} := S.Formula 0
 
 /--
-  A signature is _functional complete_ if any function of any arity is representable by some formula.
+  A signature is _functional complete_ if any function of any arity is
+  representable by some formula.
 -/
 def Signature.functional_complete {S : Signature} : Prop :=
   ∀ {n} (f : Vec n Prop → Prop), ∃ (φ : S.Formula n), φ.value = f
@@ -65,10 +69,58 @@ def Signature.subset (S₁ S₂ : Signature) : Prop :=
   S₁.constants ⊆ S₂.constants ∧
   S₁.unary ⊆ S₂.unary ∧
   S₁.binary ⊆ S₂.binary ∧
-  S₁.ternary ⊆ S₂.ternary  
+  S₁.ternary ⊆ S₂.ternary
 
+@[simp, reducible]
+def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.Formula n) : S₂.Formula n :=
+  match φ with
+  | Formula.var i => Formula.var i
+  | Formula.const c hc => Formula.const c (Set.mem_of_subset_of_mem hs.1 hc)
+  | Formula.unary f hf φ₁ => Formula.unary f (Set.mem_of_subset_of_mem hs.2.1 hf) (embed hs φ₁)
+  | Formula.binary f hf φ₁ φ₂ => Formula.binary f (Set.mem_of_subset_of_mem hs.2.2.1 hf) (embed hs φ₁) (embed hs φ₂)
+  | Formula.ternary f hf φ₁ φ₂ φ₃ => Formula.ternary f (Set.mem_of_subset_of_mem hs.2.2.2 hf) (embed hs φ₁) (embed hs φ₂) (embed hs φ₃)
+
+def Signature.subset_embedding {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
+  ∀ (φ : S₁.Formula n), ∃ ψ : S₂.Formula n, φ.value = ψ.value := by
+    intro φ
+    let ψ := embed hs φ
+    have h : φ.value = (embed hs φ).value := by
+      funext vars
+      induction φ
+      -- var
+      · rfl
+      
+      -- const
+      · rfl
+
+      -- unary
+      · rename_i f fh φ₁ hφ₁
+        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) := rfl
+        rw [hψ_value, ←hφ₁]
+      
+      -- binary
+      · rename_i f hf φ₁ φ₂ hφ₁ hφ₂
+        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) ((embed hs φ₂).value vars) := rfl
+        rw [hψ_value, ←hφ₁, ←hφ₂]
+      
+      -- ternary
+      · rename_i f hf φ₁ φ₂ φ₃ hφ₁ hφ₂ hφ₃
+        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) ((embed hs φ₂).value vars) ((embed hs φ₃).value vars) := rfl
+        rw [hψ_value, ←hφ₁, ←hφ₂, ←hφ₃]
+    
+    exact ⟨ψ, h⟩
+
+/--
+  If a signature `S₁` is the subset of a functional complete signature `S₂`, then
+  `S₁` is also functional complete.
+-/
 theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hs : S₁.subset S₂) :
-  S₂.functional_complete := sorry
+  S₂.functional_complete := by
+  intro n f
+  have ⟨φ, hφ⟩ := hfc f
+  have ⟨ψ, hψ⟩ := S₁.subset_embedding hs φ
+  rw [hφ] at hψ
+  exact ⟨ψ, hψ.symm⟩
 
 def sig_noa : Signature := ⟨∅, {(¬·)}, {(·∨·), (·∧·)}, ∅⟩
 def sig_no : Signature := ⟨∅, {(¬·)}, {(·∨·)}, ∅⟩
