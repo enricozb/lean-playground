@@ -15,20 +15,22 @@ macro_rules
 | `( Vec $n $α ) => `( Fin $n → $α )
 
 /--
-  The signature of a propositional language. Specifically, the symbols
-  (constants & functions) that generate a language.
-  
-  This modelling of a signature only accounts for functions of arity
-  up to 3. This is because manipulating functions of variable arity
-  requires modelling lists of fixed but arbitrary length. Fixing
-  the function signatures in this way will hopefully simplify pattern
-  matching and other tactics during proofs.
+  The signature (symbols) of a propositional language.
+
+  This is modeled as a family of sets of functions with different arities.
+  Constants are `Signature.symbols 0`.
 -/
 structure Signature where
-  constants : Set Prop
-  unary : Set (Prop → Prop)
-  binary : Set (Prop → Prop → Prop)
-  ternary : Set (Prop → Prop → Prop → Prop)
+  /-- Symbols with arity `n`. -/
+  symbols : (n : ℕ) → Set (Vec n Prop → Prop)
+
+/-- Constructs signatures with symbols of arity `1` and `2`. -/
+def Signature.mk₁₂ (u : Set (Vec 1 Prop → Prop)) (b : Set (Vec 2 Prop → Prop)) :=
+  Signature.mk (fun
+    | 1 => u
+    | 2 => b
+    | _ => ∅
+  )
 
 /--
   Formulas for a given signature with at most `n` unbound variables.
@@ -36,11 +38,8 @@ structure Signature where
 inductive Signature.Formula {S : Signature} (n : ℕ) where
   /-- Unbound variables. -/
   | var : (Fin n) → S.Formula n
-  /-- Constant (prime) formulas. -/
-  | const : (c : _) → (c ∈ S.constants) → S.Formula n
-  | unary : (f : _) → (f ∈ S.unary) → S.Formula n → S.Formula n
-  | binary : (f : _) → (f ∈ S.binary) → S.Formula n → S.Formula n → S.Formula n
-  | ternary : (f : _) → (f ∈ S.ternary) → S.Formula n → S.Formula n → S.Formula n → S.Formula n
+  /-- Application. Constants are applications of arity `0`. -/
+  | apply : (a : ℕ) → (f : _) → (f ∈ S.symbols a) → Vec a (S.Formula n) → S.Formula n
 
 /--
   The _valuation_ of a formula, given the values of the variables.
@@ -49,10 +48,7 @@ inductive Signature.Formula {S : Signature} (n : ℕ) where
 def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Prop) : Prop :=
   match φ with
   | var i => vars i
-  | const c _ => c
-  | unary f _ ψ₁ => f (ψ₁.value vars)
-  | binary f _ ψ₁ ψ₂ => f (ψ₁.value vars) (ψ₂.value vars)
-  | ternary f _ ψ₁ ψ₂ ψ₃ => f (ψ₁.value vars) (ψ₂.value vars) (ψ₃.value vars)
+  | apply _ f _ ψs => f (fun i => (ψs i).value vars)
 
 /--
   Sentences for a given signature are formulas with no unbound variables.
@@ -67,22 +63,19 @@ def Signature.functional_complete {S : Signature} : Prop :=
   ∀ {n} (f : Vec n Prop → Prop), ∃ (φ : S.Formula n), φ.value = f
 
 /--
-  A signature `S₁` is a subset of another signature `S₂` if the symbols
+  A signature `S₁` is a subset of a signature `S₂` if the symbols
   in `S₁` are also in `S₂`.
 -/
 def Signature.subset (S₁ S₂ : Signature) : Prop :=
-  S₁.constants ⊆ S₂.constants ∧
-  S₁.unary ⊆ S₂.unary ∧
-  S₁.binary ⊆ S₂.binary ∧
-  S₁.ternary ⊆ S₂.ternary
+  ∀ (n : ℕ), S₁.symbols n ⊆ S₂.symbols n
 
 /--
-  A signature `S₁` is represents another signature `S₂` if every formula
+  A signature `S₁` is _subsumes_ a signature `S₂` if every formula
   `φ` of signature `S₂` can be represented by a formula `ψ` of signature `S₁`.
 -/
 @[simp]
-def Signature.represents (S₁ S₂ : Signature) : Prop :=
-  ∀ {n} (φ : S₁.Formula n), ∃ ψ : S₂.Formula n, φ.value = ψ.value
+def Signature.subsumes (S₁ S₂ : Signature) : Prop :=
+  ∀ {n} (φ : S₂.Formula n), ∃ ψ : S₁.Formula n, φ.value = ψ.value
 
 /--
   Embeds a formula `φ` of a signature `S₁` into a signature `S₂` assuming `S₁ ⊆ S₂`. 
@@ -91,50 +84,39 @@ def Signature.represents (S₁ S₂ : Signature) : Prop :=
 def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.Formula n) : S₂.Formula n :=
   match φ with
   | Formula.var i => Formula.var i
-  | Formula.const c hc => Formula.const c (Set.mem_of_subset_of_mem hs.1 hc)
-  | Formula.unary f hf φ₁ => Formula.unary f (Set.mem_of_subset_of_mem hs.2.1 hf) (embed hs φ₁)
-  | Formula.binary f hf φ₁ φ₂ => Formula.binary f (Set.mem_of_subset_of_mem hs.2.2.1 hf) (embed hs φ₁) (embed hs φ₂)
-  | Formula.ternary f hf φ₁ φ₂ φ₃ => Formula.ternary f (Set.mem_of_subset_of_mem hs.2.2.2 hf) (embed hs φ₁) (embed hs φ₂) (embed hs φ₃)
+  | Formula.apply a f hf ψs =>
+    Formula.apply a f
+      (Set.mem_of_subset_of_mem (hs a) hf)
+      (fun i => embed hs (ψs i))
 
-def Signature.subset_represents {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
-  S₁.represents S₂ := by
+/--
+  If signature `S₁` is a subset of signature `S₂`, then `S₂` subsumes `S₁`.
+-/
+def Signature.subset_subsumes {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
+  S₂.subsumes S₁ := by
     intro n φ
     let ψ := embed hs φ
     have h : φ.value = (embed hs φ).value := by
       funext vars
       induction φ
-      -- var
       · rfl
-      
-      -- const
-      · rfl
-
-      -- unary
-      · rename_i f fh φ₁ hφ₁
-        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) := rfl
-        rw [hψ_value, ←hφ₁]
-      
-      -- binary
-      · rename_i f hf φ₁ φ₂ hφ₁ hφ₂
-        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) ((embed hs φ₂).value vars) := rfl
-        rw [hψ_value, ←hφ₁, ←hφ₂]
-      
-      -- ternary
-      · rename_i f hf φ₁ φ₂ φ₃ hφ₁ hφ₂ hφ₃
-        have hψ_value : ψ.value vars = f ((embed hs φ₁).value vars) ((embed hs φ₂).value vars) ((embed hs φ₃).value vars) := rfl
-        rw [hψ_value, ←hφ₁, ←hφ₂, ←hφ₃]
+      · rename_i a f hf φs hφs
+        have hφ : (Formula.apply a f hf φs).value vars = f (fun i => (φs i).value vars) := rfl
+        have hψ : ψ.value vars = f (fun i => (embed hs (φs i)).value vars) := rfl
+        rw [hφ, hψ, funext hφs]
     
     exact ⟨ψ, h⟩
 
+
 /--
-  If a signature `S₁` can represent a functional complete signature `S₂`, then
+  If a signature `S₁` can subsume a functional complete signature `S₂`, then
   `S₁` is also functional complete.
 -/
-theorem Signature.represents_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hr : S₁.represents S₂) :
+theorem Signature.subsumes_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hs : S₂.subsumes S₁) :
   S₂.functional_complete := by
   intro n f
   have ⟨φ, hφ⟩ := hfc f
-  have ⟨ψ, hψ⟩ := hr φ
+  have ⟨ψ, hψ⟩ := hs φ
   rw [hφ] at hψ
   exact ⟨ψ, hψ.symm⟩
 
@@ -144,26 +126,88 @@ theorem Signature.represents_functional_complete {S₁ S₂ : Signature} (hfc : 
 -/
 theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hs : S₁.subset S₂) :
   S₂.functional_complete := by
-  have hr : S₁.represents S₂ := S₁.subset_represents hs
-  exact @represents_functional_complete S₁ S₂ hfc hr
+  have hr : S₂.subsumes S₁ := S₁.subset_subsumes hs
+  exact @subsumes_functional_complete S₁ S₂ hfc hr
 
-def sig_noa : Signature := ⟨∅, {(¬·)}, {(·∨·), (·∧·)}, ∅⟩
-def sig_no : Signature := ⟨∅, {(¬·)}, {(·∨·)}, ∅⟩
-def sig_na : Signature := ⟨∅, {(¬·)}, {(·∧·)}, ∅⟩
+def not' : Vec 1 Prop → Prop := (fun p => ¬ (p 0))
+def or' : Vec 2 Prop → Prop := (fun p => (p 0) ∨ (p 1))
+def and' : Vec 2 Prop → Prop := (fun p => (p 0) ∧ (p 1))
+def bigor' (n : ℕ) : Vec n Prop → Prop := (fun p => ∃ i, p i)
+def bigand' (n : ℕ) : Vec n Prop → Prop := (fun p => ∀ i, p i)
 
-theorem sig_noa_functional_complete : sig_noa.functional_complete := by
+notation "(¬)" => not'
+notation "(∨)" => or'
+notation "(∧)" => and'
+notation "⋁" => bigor'
+notation "⋀" => bigand'
+
+/--
+  The signature `{¬} ∪ {⋁ n : n ∈ ℕ} ∪ {⋀ n : n ∈ ℕ} `.
+  
+  This includes the big-or and big-and operators for every arity `n`, as they
+  are used for constructing DNFs and CNFs of boolean functions.
+-/
+@[simp]
+def sig_nOA := Signature.mk (fun
+  | 0 => {(⋁ 0), (⋀ 0)}
+  | 1 => {(¬), (⋁ 1), (⋀ 1)}
+  | n+2 => {(⋁ (n+2)), (⋀ (n+2))}
+)
+def sig_noa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
+def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
+def sig_na := Signature.mk₁₂ {(¬)} {(∧)}
+ 
+theorem sig_nOA_functional_complete : sig_nOA.functional_complete := by
   intro n f
-  let f_inv_t := {b : Vec n Prop | f b}
-  have f_inv_t_finite : Finite f_inv_t := Subtype.finite
+  have f_preim := {b : Vec n Prop | f b}
+  have f_preim_fin : Finite f_preim := Subtype.finite
 
-  /-
-    TODO:
+  have conj (b : Vec n Prop) : sig_nOA.Formula n := by
+    have hf : (⋀ n) ∈ sig_nOA.symbols n := by
+      rw [sig_nOA]
+      match n with
+      | 0 => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, or_true]
+      | 1 => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, or_true]
+      | (n+2) => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, Nat.add_eq, Nat.add_zero, or_true]
+    
+    exact Signature.Formula.apply n (⋀ n) hf (
+      fun i =>
+        have : Decidable (b i) := Classical.propDecidable _
+        ite (b i) (Signature.Formula.var i) (Signature.Formula.var i)
+    )
 
-    It would be convenient to have a signature with a family of functions
-    `⋁ : (n : ℕ) → (Vec n Prop) → Prop` for each arity `n`, in order to
-    model a disjunction of an arbitrary number of formulas. This disjunction
-    is useful for the construction of a DNF. This would require a reformulation
-    of `Signature` though.
-  -/
+  have ⟨n, x, a, b⟩ := f_preim_fin
+  -- construct `φ` by applying `⋁` to `conj` to each element of `f_preim`
+  -- need to use finiteness of `f_preim` to show there exists some `n` for
+  -- which we can apply `⋁ n` to everything.
+  -- have φ := Signature.Formula.apply
 
   sorry
+
+theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
+  intro n φ
+
+  let rec embed (φ : sig_nOA.Formula n) : sig_noa.Formula n :=
+    match φ with
+    | Signature.Formula.var i => Signature.Formula.var i
+    | Signature.Formula.apply a f hf φs => match a with
+      | 0 => by
+        have : f = (⋁ 0) := hf
+        exact 
+      | 1 => by
+        have : f = (¬) ∨ f = (⋁ 1) := hf
+      | 2 => sorry
+      | n => sorry
+
+  let ψ := embed φ
+  have hψ : φ.value = ψ.value := sorry
+  
+  exact ⟨ψ, hψ⟩ 
+
+/--
+  Theorem 2.1 from Chapter 1.
+
+  The signature `{¬, ∧, ∨}` is functional complete.
+-/
+theorem sig_noa_functional_complete : sig_noa.functional_complete :=
+  Signature.subsumes_functional_complete sig_nOA_functional_complete sig_noa_subsumes_nOA
