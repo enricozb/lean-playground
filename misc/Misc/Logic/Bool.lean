@@ -14,6 +14,9 @@ import Mathlib.Tactic.LibrarySearch
 macro_rules
 | `( Vec $n $α ) => `( Fin $n → $α )
 
+macro_rules
+| `( Fn $n ) => `( String × (Vec $n Bool → Bool) )
+
 /--
   The signature (symbols) of a propositional language.
 
@@ -22,10 +25,10 @@ macro_rules
 -/
 structure Signature where
   /-- Symbols with arity `n`. -/
-  symbols : (n : ℕ) → Set (Vec n Prop → Prop)
+  symbols : (n : ℕ) → Set (Fn n)
 
 /-- Constructs signatures with symbols of arity `1` and `2`. -/
-def Signature.mk₁₂ (u : Set (Vec 1 Prop → Prop)) (b : Set (Vec 2 Prop → Prop)) :=
+def Signature.mk₁₂ (u : Set (Fn 1)) (b : Set (Fn 2)) :=
   Signature.mk (fun
     | 1 => u
     | 2 => b
@@ -41,14 +44,29 @@ inductive Signature.Formula {S : Signature} (n : ℕ) where
   /-- Application. Constants are applications of arity `0`. -/
   | apply : (f : _) → (f ∈ S.symbols a) → Vec a (S.Formula n) → S.Formula n
 
+instance {S : Signature} : ToString (S.Formula n) :=
+  let rec toString (φ : S.Formula n) : String :=
+    match φ with
+    | Signature.Formula.var i => s!"x_{i}"
+    | @Signature.Formula.apply _ _ a f hf ψs =>
+      match a with
+      | 0 => s!"{f.1}()"
+      | 1 => s!"{f.1}{toString (ψs 0)}"
+      | k+2 =>
+        have a_pos : k+2 > 0 := by simp only [gt_iff_lt, add_pos_iff, or_true]
+        let params := (List.range (k+2)).map (fun i => toString (ψs (@Fin.ofNat' (k+2) i a_pos)))
+        s!"{f.1}{params}"
+  
+  ⟨toString⟩
+
 /--
   The _valuation_ of a formula, given the values of the variables.
 -/
 @[reducible]
-def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Prop) : Prop :=
+def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Bool) : Bool :=
   match φ with
   | var i => vars i
-  | apply f _ ψs => f (fun i => (ψs i).value vars)
+  | apply f _ ψs => f.2 (fun i => (ψs i).value vars)
 
 /--
   Sentences for a given signature are formulas with no unbound variables.
@@ -60,7 +78,7 @@ def Signature.Sentence {S : Signature} := S.Formula 0
   representable by some formula.
 -/
 def Signature.functional_complete {S : Signature} : Prop :=
-  ∀ {n} (f : Vec n Prop → Prop), ∃ (φ : S.Formula n), φ.value = f
+  ∀ {n} (f : Fn n), ∃ (φ : S.Formula n), φ.value = f.2
 
 /--
   A signature `S₁` is a subset of a signature `S₂` if the symbols
@@ -101,8 +119,8 @@ def Signature.subset_subsumes {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
       induction φ
       · rfl
       · rename_i a f hf φs hφs
-        have hφ : (Formula.apply a f hf φs).value vars = f (fun i => (φs i).value vars) := rfl
-        have hψ : ψ.value vars = f (fun i => (embed hs (φs i)).value vars) := rfl
+        have hφ : (Formula.apply f hf φs).value vars = f.2 (fun i => (φs i).value vars) := rfl
+        have hψ : ψ.value vars = f.2 (fun i => (embed hs (φs i)).value vars) := rfl
         rw [hφ, hψ, funext hφs]
     
     exact ⟨ψ, h⟩
@@ -129,17 +147,17 @@ theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁
   have hr : S₂.subsumes S₁ := S₁.subset_subsumes hs
   exact @subsumes_functional_complete S₁ S₂ hfc hr
 
-def not' : Vec 1 Prop → Prop := (fun p => ¬ (p 0))
-def or' : Vec 2 Prop → Prop := (fun p => (p 0) ∨ (p 1))
-def and' : Vec 2 Prop → Prop := (fun p => (p 0) ∧ (p 1))
-def bigor' (n : ℕ) : Vec n Prop → Prop := (fun p => ∃ i, p i)
-def bigand' (n : ℕ) : Vec n Prop → Prop := (fun p => ∀ i, p i)
+def not' : Vec 1 Bool → Bool := (fun p => ¬ (p 0))
+def or' : Vec 2 Bool → Bool := (fun p => (p 0) ∨ (p 1))
+def and' : Vec 2 Bool → Bool := (fun p => (p 0) ∧ (p 1))
+def bigor' (n : ℕ) : Vec n Bool → Bool := (fun p => ∃ i, p i)
+def bigand' (n : ℕ) : Vec n Bool → Bool := (fun p => ∀ i, p i)
 
-notation "(¬)" => not'
-notation "(∨)" => or'
-notation "(∧)" => and'
-notation "⋁" => bigor'
-notation "⋀" => bigand'
+notation "(¬)" => ("¬", not')
+notation "(∨)" => ("∨", or')
+notation "(∧)" => ("∧", and')
+notation "⋁" => (fun n => ("⋁", bigor' n))
+notation "⋀" => (fun n => ("⋀", bigand' n))
 
 /--
   The signature `{¬} ∪ {⋁ n : n ∈ ℕ} ∪ {⋀ n : n ∈ ℕ} `.
@@ -153,8 +171,6 @@ def sig_nOA := Signature.mk (fun
   | 1 => {(¬), (⋁ 1), (⋀ 1)}
   | n+2 => {(⋁ (n+2)), (⋀ (n+2))}
 )
-
-#check [ToString (sig_nOA.Formula 1)]
 
 lemma sig_nOA_not : (¬) ∈ sig_nOA.symbols 1 := by
   simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or]
@@ -181,7 +197,7 @@ lemma sig_nOA_And {n : ℕ} : (⋀ n) ∈ sig_nOA.symbols n := by
   Technically this conjunction can live in a signature `{¬, ⋀}`, but it is in
   the signature `{¬, ∧, ∨, ⋀, ⋁}` to simplify the construction of the DNF.
 -/
-def dnf_entry (b : Vec n Prop) [∀ i, Decidable (b i)] : sig_nOA.Formula n :=
+def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
   Signature.Formula.apply (⋀ n) sig_nOA_And (fun i =>
     if b i then
       (Signature.Formula.var i)
@@ -189,14 +205,19 @@ def dnf_entry (b : Vec n Prop) [∀ i, Decidable (b i)] : sig_nOA.Formula n :=
       (Signature.Formula.apply (¬) sig_nOA_not (fun _ => Signature.Formula.var i))
   )
 
+#eval dnf_entry (fun i : Fin 3 => match i with
+| 0 => true
+| 1 => false
+| 2 => false)
+
 /--
   The disjunctive normal form (DNF) of a boolean function `f` of arity `n`.
 
   This requires `∀ (b : Vec n Prop), Decidable (f b)` in order to
   constructively produce a formula `φ` that represents `f`.
 -/
-def dnf (f : Vec n Prop → Prop) [hd : ∀ (b : Vec n Prop), Decidable (f b)] : sig_nOA.Formula n :=
-  let f_preim : Finset _ := {b : Vec n Prop | f b}.toFinset
+def dnf (f : Vec n Bool → Bool) : sig_nOA.Formula n :=
+  let f_preim : Finset _ := {b : Vec n Bool | f b}.toFinset
   
   -- let ⟨bijection, x, a, b⟩ : Finite f_preim := Subtype.finite
   sorry
@@ -262,5 +283,3 @@ theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
 -/
 theorem sig_noa_functional_complete : sig_noa.functional_complete :=
   Signature.subsumes_functional_complete sig_nOA_functional_complete sig_noa_subsumes_nOA
-
-#check 1
