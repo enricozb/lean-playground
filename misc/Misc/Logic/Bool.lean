@@ -39,7 +39,7 @@ inductive Signature.Formula {S : Signature} (n : ℕ) where
   /-- Unbound variables. -/
   | var : (Fin n) → S.Formula n
   /-- Application. Constants are applications of arity `0`. -/
-  | apply : (a : ℕ) → (f : _) → (f ∈ S.symbols a) → Vec a (S.Formula n) → S.Formula n
+  | apply : (f : _) → (f ∈ S.symbols a) → Vec a (S.Formula n) → S.Formula n
 
 /--
   The _valuation_ of a formula, given the values of the variables.
@@ -48,7 +48,7 @@ inductive Signature.Formula {S : Signature} (n : ℕ) where
 def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Prop) : Prop :=
   match φ with
   | var i => vars i
-  | apply _ f _ ψs => f (fun i => (ψs i).value vars)
+  | apply f _ ψs => f (fun i => (ψs i).value vars)
 
 /--
   Sentences for a given signature are formulas with no unbound variables.
@@ -84,9 +84,9 @@ def Signature.subsumes (S₁ S₂ : Signature) : Prop :=
 def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.Formula n) : S₂.Formula n :=
   match φ with
   | Formula.var i => Formula.var i
-  | Formula.apply a f hf ψs =>
-    Formula.apply a f
-      (Set.mem_of_subset_of_mem (hs a) hf)
+  | Formula.apply f hf ψs =>
+    Formula.apply f
+      (Set.mem_of_subset_of_mem (hs _) hf)
       (fun i => embed hs (ψs i))
 
 /--
@@ -153,36 +153,87 @@ def sig_nOA := Signature.mk (fun
   | 1 => {(¬), (⋁ 1), (⋀ 1)}
   | n+2 => {(⋁ (n+2)), (⋀ (n+2))}
 )
-def sig_noa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
-def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
-def sig_na := Signature.mk₁₂ {(¬)} {(∧)}
- 
+
+#check [ToString (sig_nOA.Formula 1)]
+
+lemma sig_nOA_not : (¬) ∈ sig_nOA.symbols 1 := by
+  simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or]
+
+lemma sig_nOA_Or {n : ℕ} : (⋁ n) ∈ sig_nOA.symbols n := by
+  match n with
+  | 0 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or]
+  | 1 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or, or_true]
+  | n+2 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, Nat.add_eq, Nat.add_zero, true_or]
+
+lemma sig_nOA_And {n : ℕ} : (⋀ n) ∈ sig_nOA.symbols n := by
+  match n with
+  | 0 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, or_true]
+  | 1 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or, or_true]
+  | n+2 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, Nat.add_eq, Nat.add_zero, or_true]
+
+/--
+  The conjunctive gadget used to construct a DNF for a boolean function.
+
+  If `b` is an `n`-tuple, then `dnf_entry` produces a formula of arity `n`,
+  `φ(x₁, .., xₙ) = ⋀ᵢ₌₁..ₙ (if bᵢ then xᵢ else ¬xᵢ)`. Each of these conjunctions
+  are then disjuncted to produce a DNF.
+
+  Technically this conjunction can live in a signature `{¬, ⋀}`, but it is in
+  the signature `{¬, ∧, ∨, ⋀, ⋁}` to simplify the construction of the DNF.
+-/
+def dnf_entry (b : Vec n Prop) [∀ i, Decidable (b i)] : sig_nOA.Formula n :=
+  Signature.Formula.apply (⋀ n) sig_nOA_And (fun i =>
+    if b i then
+      (Signature.Formula.var i)
+    else
+      (Signature.Formula.apply (¬) sig_nOA_not (fun _ => Signature.Formula.var i))
+  )
+
+/--
+  The disjunctive normal form (DNF) of a boolean function `f` of arity `n`.
+
+  This requires `∀ (b : Vec n Prop), Decidable (f b)` in order to
+  constructively produce a formula `φ` that represents `f`.
+-/
+def dnf (f : Vec n Prop → Prop) [hd : ∀ (b : Vec n Prop), Decidable (f b)] : sig_nOA.Formula n :=
+  let f_preim : Finset _ := {b : Vec n Prop | f b}.toFinset
+  
+  -- let ⟨bijection, x, a, b⟩ : Finite f_preim := Subtype.finite
+  sorry
+
 theorem sig_nOA_functional_complete : sig_nOA.functional_complete := by
   intro n f
-  have f_preim := {b : Vec n Prop | f b}
-  have f_preim_fin : Finite f_preim := Subtype.finite
+  let f_preim := {b : Vec n Prop | f b}
+  have card : ℕ := sorry
+  have surj : Fin card → ↑f_preim := sorry
+
+  -- have f_preim_fin : Finite f_preim := Subtype.finite
+  -- have f_preim_finty := (Fintype.ofFinite f_preim)
+  -- have f_preim_card := Fintype.card f_preim
 
   have conj (b : Vec n Prop) : sig_nOA.Formula n := by
-    have hf : (⋀ n) ∈ sig_nOA.symbols n := by
-      rw [sig_nOA]
-      match n with
-      | 0 => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, or_true]
-      | 1 => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, or_true]
-      | (n+2) => simp only [Set.mem_singleton_iff, Set.mem_insert_iff, Nat.add_eq, Nat.add_zero, or_true]
-    
-    exact Signature.Formula.apply n (⋀ n) hf (
+    exact Signature.Formula.apply (⋀ n) sig_nOA_And (
       fun i =>
-        have : Decidable (b i) := Classical.propDecidable _
-        ite (b i) (Signature.Formula.var i) (Signature.Formula.var i)
+        -- if (b i) then (var i) else ¬(var i)
+        @ite (Signature.Formula n) (b i) (Classical.propDecidable _)
+          (Signature.Formula.var i)
+          (Signature.Formula.apply (¬) sig_nOA_not (fun _ => Signature.Formula.var i))
     )
-
-  have ⟨n, x, a, b⟩ := f_preim_fin
+  
   -- construct `φ` by applying `⋁` to `conj` to each element of `f_preim`
+  have φ : sig_nOA.Formula n := Signature.Formula.apply (⋁ card) sig_nOA_Or (fun i => conj (surj i))
+
   -- need to use finiteness of `f_preim` to show there exists some `n` for
   -- which we can apply `⋁ n` to everything.
   -- have φ := Signature.Formula.apply
 
-  sorry
+  apply Exists.intro φ
+  funext b
+  simp
+
+def sig_noa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
+def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
+def sig_na := Signature.mk₁₂ {(¬)} {(∧)}
 
 theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
   intro n φ
@@ -211,3 +262,5 @@ theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
 -/
 theorem sig_noa_functional_complete : sig_noa.functional_complete :=
   Signature.subsumes_functional_complete sig_nOA_functional_complete sig_noa_subsumes_nOA
+
+#check 1
