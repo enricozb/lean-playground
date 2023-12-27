@@ -1,5 +1,6 @@
 import Mathlib.Init.Set
 import Mathlib.Data.Set.Basic
+import Mathlib.Data.Set.Finite
 import Mathlib.Data.Nat.Basic
 import Mathlib.Tactic.LibrarySearch
 
@@ -19,7 +20,7 @@ macro_rules
   
   This modelling of a signature only accounts for functions of arity
   up to 3. This is because manipulating functions of variable arity
-  requires a model of lists of fixed but arbitrary length. Fixing
+  requires modelling lists of fixed but arbitrary length. Fixing
   the function signatures in this way will hopefully simplify pattern
   matching and other tactics during proofs.
 -/
@@ -65,12 +66,27 @@ def Signature.Sentence {S : Signature} := S.Formula 0
 def Signature.functional_complete {S : Signature} : Prop :=
   ∀ {n} (f : Vec n Prop → Prop), ∃ (φ : S.Formula n), φ.value = f
 
+/--
+  A signature `S₁` is a subset of another signature `S₂` if the symbols
+  in `S₁` are also in `S₂`.
+-/
 def Signature.subset (S₁ S₂ : Signature) : Prop :=
   S₁.constants ⊆ S₂.constants ∧
   S₁.unary ⊆ S₂.unary ∧
   S₁.binary ⊆ S₂.binary ∧
   S₁.ternary ⊆ S₂.ternary
 
+/--
+  A signature `S₁` is represents another signature `S₂` if every formula
+  `φ` of signature `S₂` can be represented by a formula `ψ` of signature `S₁`.
+-/
+@[simp]
+def Signature.represents (S₁ S₂ : Signature) : Prop :=
+  ∀ {n} (φ : S₁.Formula n), ∃ ψ : S₂.Formula n, φ.value = ψ.value
+
+/--
+  Embeds a formula `φ` of a signature `S₁` into a signature `S₂` assuming `S₁ ⊆ S₂`. 
+-/
 @[simp, reducible]
 def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.Formula n) : S₂.Formula n :=
   match φ with
@@ -80,9 +96,9 @@ def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.F
   | Formula.binary f hf φ₁ φ₂ => Formula.binary f (Set.mem_of_subset_of_mem hs.2.2.1 hf) (embed hs φ₁) (embed hs φ₂)
   | Formula.ternary f hf φ₁ φ₂ φ₃ => Formula.ternary f (Set.mem_of_subset_of_mem hs.2.2.2 hf) (embed hs φ₁) (embed hs φ₂) (embed hs φ₃)
 
-def Signature.subset_embedding {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
-  ∀ (φ : S₁.Formula n), ∃ ψ : S₂.Formula n, φ.value = ψ.value := by
-    intro φ
+def Signature.subset_represents {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
+  S₁.represents S₂ := by
+    intro n φ
     let ψ := embed hs φ
     have h : φ.value = (embed hs φ).value := by
       funext vars
@@ -111,19 +127,43 @@ def Signature.subset_embedding {S₁ S₂ : Signature} (hs : S₁.subset S₂) :
     exact ⟨ψ, h⟩
 
 /--
+  If a signature `S₁` can represent a functional complete signature `S₂`, then
+  `S₁` is also functional complete.
+-/
+theorem Signature.represents_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hr : S₁.represents S₂) :
+  S₂.functional_complete := by
+  intro n f
+  have ⟨φ, hφ⟩ := hfc f
+  have ⟨ψ, hψ⟩ := hr φ
+  rw [hφ] at hψ
+  exact ⟨ψ, hψ.symm⟩
+
+/--
   If a signature `S₁` is the subset of a functional complete signature `S₂`, then
   `S₁` is also functional complete.
 -/
 theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁.functional_complete) (hs : S₁.subset S₂) :
   S₂.functional_complete := by
-  intro n f
-  have ⟨φ, hφ⟩ := hfc f
-  have ⟨ψ, hψ⟩ := S₁.subset_embedding hs φ
-  rw [hφ] at hψ
-  exact ⟨ψ, hψ.symm⟩
+  have hr : S₁.represents S₂ := S₁.subset_represents hs
+  exact @represents_functional_complete S₁ S₂ hfc hr
 
 def sig_noa : Signature := ⟨∅, {(¬·)}, {(·∨·), (·∧·)}, ∅⟩
 def sig_no : Signature := ⟨∅, {(¬·)}, {(·∨·)}, ∅⟩
 def sig_na : Signature := ⟨∅, {(¬·)}, {(·∧·)}, ∅⟩
 
-theorem sig_noa_functional_complete : sig_noa.functional_complete := sorry
+theorem sig_noa_functional_complete : sig_noa.functional_complete := by
+  intro n f
+  let f_inv_t := {b : Vec n Prop | f b}
+  have f_inv_t_finite : Finite f_inv_t := Subtype.finite
+
+  /-
+    TODO:
+
+    It would be convenient to have a signature with a family of functions
+    `⋁ : (n : ℕ) → (Vec n Prop) → Prop` for each arity `n`, in order to
+    model a disjunction of an arbitrary number of formulas. This disjunction
+    is useful for the construction of a DNF. This would require a reformulation
+    of `Signature` though.
+  -/
+
+  sorry
