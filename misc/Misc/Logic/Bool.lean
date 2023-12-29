@@ -1,8 +1,9 @@
-import Mathlib.Init.Set
-import Mathlib.Data.Set.Basic
-import Mathlib.Data.Set.Finite
 import Mathlib.Data.Nat.Basic
+import Mathlib.Data.Set.Basic
+import Mathlib.Init.Order.Defs
+import Mathlib.Init.Set
 import Mathlib.Tactic.LibrarySearch
+import «Misc».Logic.Vector
 
 /--
   A macro definition of a vector, modeled as a `(Fin n → α)`.
@@ -16,6 +17,24 @@ macro_rules
 
 macro_rules
 | `( Fn $n ) => `( String × (Vec $n Bool → Bool) )
+
+-- TODO: I think `IsTotal` might be implied by `LinearOrder`.
+def Finset.toVec {s : Finset α} [r: LinearOrder α] [IsTotal α r.lt] : Vec s.card α :=
+  have length_eq_card : (s.sort (r.lt)).length = s.card := Finset.length_sort _
+  have get := (s.sort (r.lt)).get
+
+  -- TODO: any way to do this without a tactic?
+  by
+    rw [length_eq_card] at get
+    exact get
+
+-- def Vec.lt {v₁ v₂ : Vec n α} [r : LinearOrder α] : Prop :=
+--   let rec lt (i : Fin n) :=
+--     match i with
+--     | ⟨0, h⟩ => v₁ i < v₂ i
+--     | ⟨i+1, h⟩ => v₁ i < v₂ i ∧ lt (Fin.ofNat i)
+
+--   lt 0
 
 /--
   The signature (symbols) of a propositional language.
@@ -156,8 +175,8 @@ def bigand' (n : ℕ) : Vec n Bool → Bool := (fun p => ∀ i, p i)
 notation "(¬)" => ("¬", not')
 notation "(∨)" => ("∨", or')
 notation "(∧)" => ("∧", and')
-notation "⋁" => (fun n => ("⋁", bigor' n))
-notation "⋀" => (fun n => ("⋀", bigand' n))
+notation "⋁" => ("⋁", bigor' ·)
+notation "⋀" => ("⋀", bigand' ·)
 
 /--
   The signature `{¬} ∪ {⋁ n : n ∈ ℕ} ∪ {⋀ n : n ∈ ℕ} `.
@@ -167,9 +186,8 @@ notation "⋀" => (fun n => ("⋀", bigand' n))
 -/
 @[simp]
 def sig_nOA := Signature.mk (fun
-  | 0 => {(⋁ 0), (⋀ 0)}
-  | 1 => {(¬), (⋁ 1), (⋀ 1)}
-  | n+2 => {(⋁ (n+2)), (⋀ (n+2))}
+  | 1 => {⋁ 1, ⋀ 1, (¬)}
+  | n => {⋁ n, ⋀ n}
 )
 
 lemma sig_nOA_not : (¬) ∈ sig_nOA.symbols 1 := by
@@ -205,11 +223,6 @@ def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
       (Signature.Formula.apply (¬) sig_nOA_not (fun _ => Signature.Formula.var i))
   )
 
-#eval dnf_entry (fun i : Fin 3 => match i with
-| 0 => true
-| 1 => false
-| 2 => false)
-
 /--
   The disjunctive normal form (DNF) of a boolean function `f` of arity `n`.
 
@@ -217,10 +230,9 @@ def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
   constructively produce a formula `φ` that represents `f`.
 -/
 def dnf (f : Vec n Bool → Bool) : sig_nOA.Formula n :=
-  let f_preim : Finset _ := {b : Vec n Bool | f b}.toFinset
-  
-  -- let ⟨bijection, x, a, b⟩ : Finite f_preim := Subtype.finite
-  sorry
+  have tb := {b | f b}.toFinset
+
+  Signature.Formula.apply (⋁ tb.card) sig_nOA_Or (dnf_entry ∘ tb.toVec)
 
 theorem sig_nOA_functional_complete : sig_nOA.functional_complete := by
   intro n f
