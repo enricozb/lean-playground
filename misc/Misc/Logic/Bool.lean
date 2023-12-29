@@ -1,9 +1,10 @@
+import Mathlib.Data.Finset.Sort
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Set.Basic
 import Mathlib.Init.Order.Defs
 import Mathlib.Init.Set
 import Mathlib.Tactic.LibrarySearch
-import «Misc».Logic.Vector
+import Mathlib.Data.FinEnum
 
 /--
   A macro definition of a vector, modeled as a `(Fin n → α)`.
@@ -18,23 +19,14 @@ macro_rules
 macro_rules
 | `( Fn $n ) => `( String × (Vec $n Bool → Bool) )
 
--- TODO: I think `IsTotal` might be implied by `LinearOrder`.
-def Finset.toVec {s : Finset α} [r: LinearOrder α] [IsTotal α r.lt] : Vec s.card α :=
-  have length_eq_card : (s.sort (r.lt)).length = s.card := Finset.length_sort _
-  have get := (s.sort (r.lt)).get
+instance : FinEnum Bool := ⟨
+  2, -- card
+  (fun b => if b then 1 else 0),
+  (fun i => if i = 0 then false else true),
+  (by simp only),
+  (by simp only)
+⟩
 
-  -- TODO: any way to do this without a tactic?
-  by
-    rw [length_eq_card] at get
-    exact get
-
--- def Vec.lt {v₁ v₂ : Vec n α} [r : LinearOrder α] : Prop :=
---   let rec lt (i : Fin n) :=
---     match i with
---     | ⟨0, h⟩ => v₁ i < v₂ i
---     | ⟨i+1, h⟩ => v₁ i < v₂ i ∧ lt (Fin.ofNat i)
-
---   lt 0
 
 /--
   The signature (symbols) of a propositional language.
@@ -230,9 +222,12 @@ def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
   constructively produce a formula `φ` that represents `f`.
 -/
 def dnf (f : Vec n Bool → Bool) : sig_nOA.Formula n :=
-  have tb := {b | f b}.toFinset
+  have all : List (Vec n Bool) := @FinEnum.pi.enum (Fin n) (fun _ => Bool) _ _
+  have trues := all.filter f
 
-  Signature.Formula.apply (⋁ tb.card) sig_nOA_Or (dnf_entry ∘ tb.toVec)
+  Signature.Formula.apply (⋁ trues.length) sig_nOA_Or (dnf_entry ∘ trues.get)
+
+#eval (dnf (fun b : Vec 2 Bool => b 0 ∨ b 1))
 
 theorem sig_nOA_functional_complete : sig_nOA.functional_complete := by
   intro n f
