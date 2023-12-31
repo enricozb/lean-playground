@@ -6,27 +6,33 @@ import Mathlib.Init.Set
 import Mathlib.Tactic.LibrarySearch
 import Mathlib.Data.FinEnum
 
-/--
-  A macro definition of a vector, modeled as a `(Fin n → α)`.
-  For some reason this doesn't work:
-  ```
-  def Vec (n : ℕ) (α : Type v) := Fin n → α
-  ```
--/
-macro_rules
-| `( Vec $n $α ) => `( Fin $n → $α )
+/- Some utilities to clarify & simplify definitions. -/
+section Utils
 
-macro_rules
-| `( Fn $n ) => `( String × (Vec $n Bool → Bool) )
+/--
+  A notation for vectors.
+
+  A definition cannot be used as inductive constructors can't contain `def`s.
+-/
+notation "Vec" => (fun (n : ℕ) (α : Type) => Fin n → α)
 
 instance : FinEnum Bool := ⟨
-  2, -- card
+  -- card
+  2,
+  -- mappings between Bool and Fin 2
   (fun b => if b then 1 else 0),
   (fun i => if i = 0 then false else true),
+  -- proofs that above maps are inverses of each other
   (by simp only),
   (by simp only)
 ⟩
 
+end Utils
+
+/-- A symbol of arity `n`. -/
+structure Symbol (n : ℕ) where
+  repr : String
+  fn : Vec n Bool → Bool
 
 /--
   The signature (symbols) of a propositional language.
@@ -36,10 +42,10 @@ instance : FinEnum Bool := ⟨
 -/
 structure Signature where
   /-- Symbols with arity `n`. -/
-  symbols : (n : ℕ) → Set (Fn n)
+  symbols : (n : ℕ) → Set (Symbol n)
 
 /-- Constructs signatures with symbols of arity `1` and `2`. -/
-def Signature.mk₁₂ (u : Set (Fn 1)) (b : Set (Fn 2)) :=
+def Signature.mk₁₂ (u : Set (Symbol 1)) (b : Set (Symbol 2)) :=
   Signature.mk (fun
     | 1 => u
     | 2 => b
@@ -59,10 +65,13 @@ instance {S : Signature} : ToString (S.Formula n) :=
   let rec toString (φ : S.Formula n) : String :=
     match φ with
     | Signature.Formula.var i => s!"x_{i}"
-    | @Signature.Formula.apply _ _ a f hf ψs =>
+    | @Signature.Formula.apply _ _ a f _ ψs =>
       match a with
-      | 0 => s!"{f.1}()"
+      -- constants are just the symbols
+      | 0 => s!"{f.1}"
+      -- unary operators do not surround their arguments
       | 1 => s!"{f.1}{toString (ψs 0)}"
+      -- operators of arity `n > 1` surround their arguments in brackets (`[]`)
       | k+2 =>
         have a_pos : k+2 > 0 := by simp only [gt_iff_lt, add_pos_iff, or_true]
         let params := (List.range (k+2)).map (fun i => toString (ψs (@Fin.ofNat' (k+2) i a_pos)))
@@ -71,7 +80,7 @@ instance {S : Signature} : ToString (S.Formula n) :=
   ⟨toString⟩
 
 /--
-  The _valuation_ of a formula, given the values of the variables.
+  The _valuation_ of a formula is the boolean function it represents.
 -/
 @[reducible]
 def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Bool) : Bool :=
@@ -89,7 +98,7 @@ def Signature.Sentence {S : Signature} := S.Formula 0
   representable by some formula.
 -/
 def Signature.functional_complete {S : Signature} : Prop :=
-  ∀ {n} (f : Fn n), ∃ (φ : S.Formula n), φ.value = f.2
+  ∀ {n} (f : Vec n Bool → Bool), ∃ (φ : S.Formula n), f = φ.value
 
 /--
   A signature `S₁` is a subset of a signature `S₂` if the symbols
@@ -146,8 +155,8 @@ theorem Signature.subsumes_functional_complete {S₁ S₂ : Signature} (hfc : S�
   intro n f
   have ⟨φ, hφ⟩ := hfc f
   have ⟨ψ, hψ⟩ := hs φ
-  rw [hφ] at hψ
-  exact ⟨ψ, hψ.symm⟩
+  rw [hφ.symm] at hψ
+  exact ⟨ψ, hψ⟩
 
 /--
   If a signature `S₁` is the subset of a functional complete signature `S₂`, then
@@ -164,11 +173,11 @@ def and' : Vec 2 Bool → Bool := (fun p => (p 0) ∧ (p 1))
 def bigor' (n : ℕ) : Vec n Bool → Bool := (fun p => ∃ i, p i)
 def bigand' (n : ℕ) : Vec n Bool → Bool := (fun p => ∀ i, p i)
 
-notation "(¬)" => ("¬", not')
-notation "(∨)" => ("∨", or')
-notation "(∧)" => ("∧", and')
-notation "⋁" => ("⋁", bigor' ·)
-notation "⋀" => ("⋀", bigand' ·)
+notation "(¬)" => Symbol.mk "¬" not'
+notation "(∨)" => Symbol.mk "∨" or'
+notation "(∧)" => Symbol.mk "∧" and'
+notation "⋁" => (fun n => Symbol.mk "⋁" (bigor' n))
+notation "⋀" => (fun n => Symbol.mk "⋀" (bigand' n))
 
 /--
   The signature `{¬} ∪ {⋁ n : n ∈ ℕ} ∪ {⋀ n : n ∈ ℕ} `.
@@ -183,7 +192,7 @@ def sig_nOA := Signature.mk (fun
 )
 
 lemma sig_nOA_not : (¬) ∈ sig_nOA.symbols 1 := by
-  simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, true_or]
+  simp only [sig_nOA, Set.mem_singleton_iff, Symbol.mk.injEq, Set.mem_insert_iff, or_self, false_and, or_true]
 
 lemma sig_nOA_Or {n : ℕ} : (⋁ n) ∈ sig_nOA.symbols n := by
   match n with
@@ -198,7 +207,22 @@ lemma sig_nOA_And {n : ℕ} : (⋀ n) ∈ sig_nOA.symbols n := by
   | n+2 => simp only [sig_nOA, Set.mem_singleton_iff, Set.mem_insert_iff, Nat.add_eq, Nat.add_zero, or_true]
 
 /--
-  The conjunctive gadget used to construct a DNF for a boolean function.
+  A list of inputs satisfying `f`.
+  
+  That is, a list of `b : Vec n Bool` such that `f b = true`. This list is
+  ordered by the ordering imposed by `FinEnum Bool`.
+-/
+def satisfying_inputs (f : Vec n Bool → Bool) : List (Vec n Bool) :=
+  (FinEnum.pi.enum (fun _ => Bool)).filter f
+
+/-- If `f b = true` then `b` is in the list of satisfying inputs. -/
+def satisfying_inputs_contains (f : Vec n Bool → Bool) (b : Vec n Bool) (hb : f b = true) :
+  ∃ i, (satisfying_inputs f).get i = b := 
+  List.mem_iff_get.mp (List.mem_filter.mpr ⟨FinEnum.pi.mem_enum _, hb⟩)
+
+/--
+  The conjunctive gadget (a DNF entry) used to construct a DNF for a boolean
+  function.
 
   If `b` is an `n`-tuple, then `dnf_entry` produces a formula of arity `n`,
   `φ(x₁, .., xₙ) = ⋀ᵢ₌₁..ₙ (if bᵢ then xᵢ else ¬xᵢ)`. Each of these conjunctions
@@ -216,48 +240,82 @@ def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
   )
 
 /--
+  The conjunctive gadget (a DNF entry) evaluates to true for the boolean vector
+  `b` that was used to build it.
+-/
+lemma dnf_entry_true (b : Vec n Bool) : (dnf_entry b).value b = true := by
+  simp only [Signature.Formula.value, bigand', decide_eq_true_eq]
+  intro i
+  by_cases b i = true
+  all_goals { simp only [Signature.Formula.value, *] }
+
+/--
+  If a conjunctive gadget (a DNF entry) constructed from a boolean vector `b₁`
+  evaluates to true for some boolean vector `b₂`, then `b₁ = b₂`.
+-/
+lemma dnf_entry_true_eq (b₁ b₂ : Vec n Bool) : (dnf_entry b₁).value b₂ = true → b₁ = b₂ := by
+  intro h
+  funext i
+  simp [Signature.Formula.value, dnf_entry, bigand', *] at h
+  have hφb₂ := h i
+  by_cases b₁ i = true
+  all_goals {
+    simp [Signature.Formula.value, dnf_entry, bigand', not', *] at hφb₂
+    try rw [Bool.not_eq_true] at h
+    rw [h]
+    exact hφb₂.symm
+  }
+
+/--
   The disjunctive normal form (DNF) of a boolean function `f` of arity `n`.
 
   This requires `∀ (b : Vec n Prop), Decidable (f b)` in order to
   constructively produce a formula `φ` that represents `f`.
 -/
 def dnf (f : Vec n Bool → Bool) : sig_nOA.Formula n :=
-  have all : List (Vec n Bool) := @FinEnum.pi.enum (Fin n) (fun _ => Bool) _ _
-  have trues := all.filter f
+  have trues := satisfying_inputs f
 
   Signature.Formula.apply (⋁ trues.length) sig_nOA_Or (dnf_entry ∘ trues.get)
 
-#eval (dnf (fun b : Vec 2 Bool => b 0 ∨ b 1))
+/--
+  For any function `f: 𝔹ⁿ → 𝔹`, the DNF of `f` represents `f`.
+-/
+theorem dnf_represents (f : Vec n Bool → Bool) : (dnf f).value = f := by
+  funext b
+  rw [Signature.Formula.value]
+  simp only [bigor']
+  by_cases (f b)
 
+  -- f b = true
+  · rw [h]
+    simp only [Bool.true_eq_decide_iff, bigand', decide_eq_true_eq]
+    have ⟨i, hi⟩ := satisfying_inputs_contains f b h
+    apply Exists.intro i
+    rw [Function.comp_apply, hi]
+    exact dnf_entry_true b
+
+  -- f b = false
+  · rw [Bool.not_eq_true] at h
+    rw [h]
+    simp only [
+      Bool.false_eq_decide_iff, bigand', decide_eq_false_iff_not,
+      not_exists, not_forall, Bool.not_eq_true, Function.comp_apply
+    ]
+    intro i
+    apply by_contradiction
+    intro hφb_true
+    let bᵢ := (satisfying_inputs f).get i
+    have hfbᵢ : f bᵢ = true := (List.mem_filter.mp (List.get_mem _ i _)).2
+    rw [Bool.not_eq_false] at hφb_true
+    rw [dnf_entry_true_eq bᵢ b hφb_true, h] at hfbᵢ
+    contradiction
+
+/--
+  The signature `{¬, ∨, ∧, ⋁, ⋀}` is functional complete.
+-/
 theorem sig_nOA_functional_complete : sig_nOA.functional_complete := by
   intro n f
-  let f_preim := {b : Vec n Prop | f b}
-  have card : ℕ := sorry
-  have surj : Fin card → ↑f_preim := sorry
-
-  -- have f_preim_fin : Finite f_preim := Subtype.finite
-  -- have f_preim_finty := (Fintype.ofFinite f_preim)
-  -- have f_preim_card := Fintype.card f_preim
-
-  have conj (b : Vec n Prop) : sig_nOA.Formula n := by
-    exact Signature.Formula.apply (⋀ n) sig_nOA_And (
-      fun i =>
-        -- if (b i) then (var i) else ¬(var i)
-        @ite (Signature.Formula n) (b i) (Classical.propDecidable _)
-          (Signature.Formula.var i)
-          (Signature.Formula.apply (¬) sig_nOA_not (fun _ => Signature.Formula.var i))
-    )
-  
-  -- construct `φ` by applying `⋁` to `conj` to each element of `f_preim`
-  have φ : sig_nOA.Formula n := Signature.Formula.apply (⋁ card) sig_nOA_Or (fun i => conj (surj i))
-
-  -- need to use finiteness of `f_preim` to show there exists some `n` for
-  -- which we can apply `⋁ n` to everything.
-  -- have φ := Signature.Formula.apply
-
-  apply Exists.intro φ
-  funext b
-  simp
+  exact ⟨dnf f, (dnf_represents f).symm⟩
 
 def sig_noa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
 def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
