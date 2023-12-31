@@ -39,6 +39,8 @@ structure Symbol (n : ℕ) where
 
   This is modeled as a family of sets of functions with different arities.
   Constants are `Signature.symbols 0`.
+
+  Notice that signatures need not be finite.
 -/
 structure Signature where
   /-- Symbols with arity `n`. -/
@@ -82,11 +84,18 @@ instance {S : Signature} : ToString (S.Formula n) :=
 /--
   The _valuation_ of a formula is the boolean function it represents.
 -/
-@[reducible]
 def Signature.Formula.value {S : Signature} {φ : S.Formula n} (vars : Vec n Bool) : Bool :=
   match φ with
   | var i => vars i
   | apply f _ ψs => f.2 (fun i => (ψs i).value vars)
+
+/--
+  Applies a formula to a vector of formulas.
+-/
+def Signature.Formula.fmap {S : Signature} {φ : S.Formula n} (ψs : Vec n (S.Formula m)) : S.Formula m :=
+  match φ with
+  | var i => ψs i
+  | apply f hf ψs' => apply f hf (fun i => (ψs' i).fmap ψs)
 
 /--
   Sentences for a given signature are formulas with no unbound variables.
@@ -108,17 +117,47 @@ def Signature.subset (S₁ S₂ : Signature) : Prop :=
   ∀ (n : ℕ), S₁.symbols n ⊆ S₂.symbols n
 
 /--
-  A signature `S₁` is _subsumes_ a signature `S₂` if every formula
+  A signature `S₁` is _subsumes_ a signature `S₂` if every _formula_
   `φ` of signature `S₂` can be represented by a formula `ψ` of signature `S₁`.
 -/
-@[simp]
-def Signature.subsumes (S₁ S₂ : Signature) : Prop :=
-  ∀ {n} (φ : S₂.Formula n), ∃ ψ : S₁.Formula n, φ.value = ψ.value
+def Signature.subsumes (S₁ S₂ : Signature) :=
+  ∀ {n} (φ : S₂.Formula n), (ψ : S₁.Formula n) ×' (φ.value = ψ.value)
+
+/--
+  A signature `S₁` is _narrows_ a signature `S₂` if every _symbol_
+  `s` of signature `S₂` can be represented by a formula `ψ` of signature `S₁`.
+-/
+def Signature.narrows (S₁ S₂ : Signature) :=
+  ∀ {n} {s : _}, (s ∈ S₂.symbols n) → (ψ : S₁.Formula n) ×' (s.fn = ψ.value)
+
+/--
+  Maps a formula `φ` of a signature `S₂` into a signature `S₁` assuming `S₁.narrows S₂`. 
+-/
+def Signature.narrow {S₁ S₂ : Signature} (hn : S₁.narrows S₂) (φ : S₂.Formula n) : S₁.Formula n :=
+  match φ with
+  | Formula.var i => Formula.var i
+  | Formula.apply _ hf ψs => (hn hf).1.fmap (fun i => (S₁.narrow hn (ψs i)))
+
+/--
+  A narrowed formula `φ₂ := S₁.narrow φ₁` represesents `φ₁`.
+-/
+theorem Signature.narrow_represents {S₁ S₂ : Signature} {hn : S₁.narrows S₂} (φ : S₂.Formula n) :
+  φ.value = (S₁.narrow hn φ).value := by
+  funext b
+  induction φ
+  · rfl
+  · rename_i a f hf φs hφs
+    simp [Signature.Formula.value, narrow, *]
+    sorry
+
+/-- If a signature `S₁` narrows a signature `S₂` then it subsumes it. -/
+theorem Signature.narrows_subsumes {S₁ S₂ : Signature} (hn : S₁.narrows S₂) : S₁.subsumes S₂ := by
+  intro n φ
+  exact ⟨S₁.narrow hn φ, S₁.narrow_represents φ⟩
 
 /--
   Embeds a formula `φ` of a signature `S₁` into a signature `S₂` assuming `S₁ ⊆ S₂`. 
 -/
-@[simp, reducible]
 def Signature.embed {S₁ S₂ : Signature} (hs : S₁.subset S₂) (φ : S₁.Formula n) : S₂.Formula n :=
   match φ with
   | Formula.var i => Formula.var i
@@ -240,31 +279,35 @@ def dnf_entry (b : Vec n Bool) : sig_nOA.Formula n :=
   )
 
 /--
+  If a conjunctive gadget (a DNF entry) constructed from a boolean vector `b₁`
+  evaluates to true for some boolean vector `b₂` if and only if `b₁ = b₂`.
+-/
+lemma dnf_entry_true_iff (b₁ b₂ : Vec n Bool) : (dnf_entry b₁).value b₂ = true ↔ b₁ = b₂ := by
+  apply Iff.intro
+  · intro hφb₂
+    funext i
+    simp [Signature.Formula.value, dnf_entry, bigand', *] at hφb₂
+    have hφb₂ᵢ := hφb₂ i
+    by_cases b₁ i = true
+    all_goals simp [Signature.Formula.value, dnf_entry, bigand', not', *] at hφb₂ᵢ
+    · simp only [Bool.not_eq_true, h, hφb₂ᵢ]
+    · rw [Bool.not_eq_true] at h
+      rw [of_decide_eq_true hφb₂ᵢ]
+      exact h
+
+  · intro hb₁_eq_b₂
+    simp only [Signature.Formula.value, bigand', decide_eq_true_eq]
+    intro i
+    by_cases b₂ i = true
+    all_goals { simp only [Signature.Formula.value, *] }
+
+/--
   The conjunctive gadget (a DNF entry) evaluates to true for the boolean vector
   `b` that was used to build it.
 -/
-lemma dnf_entry_true (b : Vec n Bool) : (dnf_entry b).value b = true := by
-  simp only [Signature.Formula.value, bigand', decide_eq_true_eq]
-  intro i
-  by_cases b i = true
-  all_goals { simp only [Signature.Formula.value, *] }
+lemma dnf_entry_self (b : Vec n Bool) : (dnf_entry b).value b = true := 
+(dnf_entry_true_iff b b).mpr rfl
 
-/--
-  If a conjunctive gadget (a DNF entry) constructed from a boolean vector `b₁`
-  evaluates to true for some boolean vector `b₂`, then `b₁ = b₂`.
--/
-lemma dnf_entry_true_eq (b₁ b₂ : Vec n Bool) : (dnf_entry b₁).value b₂ = true → b₁ = b₂ := by
-  intro h
-  funext i
-  simp [Signature.Formula.value, dnf_entry, bigand', *] at h
-  have hφb₂ := h i
-  by_cases b₁ i = true
-  all_goals {
-    simp [Signature.Formula.value, dnf_entry, bigand', not', *] at hφb₂
-    try rw [Bool.not_eq_true] at h
-    rw [h]
-    exact hφb₂.symm
-  }
 
 /--
   The disjunctive normal form (DNF) of a boolean function `f` of arity `n`.
@@ -292,7 +335,7 @@ theorem dnf_represents (f : Vec n Bool → Bool) : (dnf f).value = f := by
     have ⟨i, hi⟩ := satisfying_inputs_contains f b h
     apply Exists.intro i
     rw [Function.comp_apply, hi]
-    exact dnf_entry_true b
+    exact dnf_entry_self b
 
   -- f b = false
   · rw [Bool.not_eq_true] at h
@@ -307,7 +350,7 @@ theorem dnf_represents (f : Vec n Bool → Bool) : (dnf f).value = f := by
     let bᵢ := (satisfying_inputs f).get i
     have hfbᵢ : f bᵢ = true := (List.mem_filter.mp (List.get_mem _ i _)).2
     rw [Bool.not_eq_false] at hφb_true
-    rw [dnf_entry_true_eq bᵢ b hφb_true, h] at hfbᵢ
+    rw [(dnf_entry_true_iff bᵢ b).mp hφb_true, h] at hfbᵢ
     contradiction
 
 /--
@@ -321,25 +364,43 @@ def sig_noa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
 def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
 def sig_na := Signature.mk₁₂ {(¬)} {(∧)}
 
-theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
-  intro n φ
+def sig_noa_narrows_nOA : sig_noa.narrows sig_nOA := by
+  intro a f hf
+  match a with
+  | 0 =>
+    simp [bigand', bigor', *] at hf
+    if h_or : f = (⋁ 0) then
+      sorry
+    else if h_and : f = (⋀ 0) then
+      sorry
+    else
+      have := not_or.mpr ⟨h_or, h_and⟩ hf
+      contradiction
 
-  let rec embed (φ : sig_nOA.Formula n) : sig_noa.Formula n :=
-    match φ with
-    | Signature.Formula.var i => Signature.Formula.var i
-    | Signature.Formula.apply a f hf φs => match a with
-      | 0 => by
-        have : f = (⋁ 0) := hf
-        exact 
-      | 1 => by
-        have : f = (¬) ∨ f = (⋁ 1) := hf
-      | 2 => sorry
-      | n => sorry
+  | 1 => sorry
+  | 2 => sorry
+  | n => sorry
 
-  let ψ := embed φ
-  have hψ : φ.value = ψ.value := sorry
+
+-- theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
+--   intro n φ
+
+--   let rec embed (φ : sig_nOA.Formula n) : sig_noa.Formula n :=
+--     match φ with
+--     | Signature.Formula.var i => Signature.Formula.var i
+--     | Signature.Formula.apply a f hf φs => match a with
+--       | 0 => by
+--         have : f = (⋁ 0) := hf
+--         exact 
+--       | 1 => by
+--         have : f = (¬) ∨ f = (⋁ 1) := hf
+--       | 2 => sorry
+--       | n => sorry
+
+--   let ψ := embed φ
+--   have hψ : φ.value = ψ.value := sorry
   
-  exact ⟨ψ, hψ⟩ 
+--   exact ⟨ψ, hψ⟩ 
 
 /--
   Theorem 2.1 from Chapter 1.
@@ -347,4 +408,6 @@ theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
   The signature `{¬, ∧, ∨}` is functional complete.
 -/
 theorem sig_noa_functional_complete : sig_noa.functional_complete :=
-  Signature.subsumes_functional_complete sig_nOA_functional_complete sig_noa_subsumes_nOA
+  Signature.subsumes_functional_complete
+    sig_nOA_functional_complete
+    (sig_noa.narrows_subsumes sig_noa_narrows_nOA)
