@@ -5,7 +5,7 @@ import Mathlib.Data.FinEnum
 
   A definition cannot be used as inductive constructors can't contain `def`s.
 -/
-notation "Vec" => (fun (n : ℕ) (α : Type) => Fin n → α)
+notation "[" α ";" n "]" => Fin n → α
 
 instance : FinEnum Bool := ⟨
   -- card

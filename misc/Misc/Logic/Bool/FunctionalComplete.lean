@@ -5,7 +5,7 @@ import «Misc».Logic.Bool.Signature
   representable by some formula.
 -/
 def Signature.functional_complete {S : Signature} : Prop :=
-  ∀ {n} (f : Vec n Bool → Bool), ∃ (φ : S.Formula n), f = φ.value
+  ∀ {n} (f : [Bool; n] → Bool), ∃ (φ : S.Formula n), f = φ.value
 
 /--
   A signature `S₁` is a subset of a signature `S₂` if the symbols
@@ -72,14 +72,7 @@ theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁
   exact @subsumes_functional_complete S₁ S₂ hfc hr
 
 -- TODO: do we need `narrows`?
-
-/--
-  Applies a formula to a vector of formulas.
--/
-def Signature.Formula.fmap {S : Signature} {φ : S.Formula n} (ψs : Vec n (S.Formula m)) : S.Formula m :=
-  match φ with
-  | var i => ψs i
-  | apply f hf ψs' => apply f hf (fun i => (ψs' i).fmap ψs)
+-- TODO: "narrows" is a poor name as `S ∪ {s}` "narrows" `S`.
 
 /--
   A signature `S₁` is _narrows_ a signature `S₂` if every _symbol_
@@ -91,25 +84,31 @@ def Signature.narrows (S₁ S₂ : Signature) :=
 /--
   Maps a formula `φ` of a signature `S₂` into a signature `S₁` assuming `S₁.narrows S₂`. 
 -/
-def Signature.narrow {S₁ S₂ : Signature} (hn : S₁.narrows S₂) (φ : S₂.Formula n) : S₁.Formula n :=
+def Signature.narrow_map {S₁ S₂ : Signature} (hn : S₁.narrows S₂) (φ : S₂.Formula n) : S₁.Formula n :=
   match φ with
   | Formula.var i => Formula.var i
-  | Formula.apply _ hf ψs => (hn hf).1.fmap (fun i => (S₁.narrow hn (ψs i)))
+  | Formula.apply _ hf ψs => (hn hf).1.compose (fun i => (S₁.narrow_map hn (ψs i)))
 
 /--
   A narrowed formula `φ₂ := S₁.narrow φ₁` represesents `φ₁`.
 -/
-theorem Signature.narrow_represents {S₁ S₂ : Signature} {hn : S₁.narrows S₂} (φ : S₂.Formula n) :
-  φ.value = (S₁.narrow hn φ).value := by
+theorem Signature.narrow_map_value {S₁ S₂ : Signature} {hn : S₁.narrows S₂} (φ : S₂.Formula n) :
+  φ.value = (S₁.narrow_map hn φ).value := by
   funext b
   induction φ
   · rfl
   · rename_i a f hf φs hφs
-    simp [Signature.Formula.value, narrow, *]
+    let ⟨ψf, hψf⟩ := hn hf
+    conv => rhs; simp [Formula.value, narrow_map]; arg @ 3; simp [Formula.compose]
+    conv => lhs; simp [Formula.value]; arg 2; intro i; rw [hφs i]
+    conv => rhs; simp [Formula.value, narrow_map, Formula.compose]
+    
+    simp [Formula.value, Formula.compose, narrow_map, hφs, hψf, *]
+
     sorry
     
 
 /-- If a signature `S₁` narrows a signature `S₂` then it subsumes it. -/
 theorem Signature.narrows_subsumes {S₁ S₂ : Signature} (hn : S₁.narrows S₂) : S₁.subsumes S₂ := by
   intro n φ
-  exact ⟨S₁.narrow hn φ, S₁.narrow_represents φ⟩
+  exact ⟨S₁.narrow_map hn φ, S₁.narrow_map_value φ⟩
