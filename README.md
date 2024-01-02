@@ -5,7 +5,7 @@ Messing around with [Lean](https://github.com/leanprover/lean4).
 Below are some highlights of each of the files.
 
 ## Boolean Logic
-- [`misc/Misc/Logic/Bool/Exercises.lean`](./misc/Misc/Logic/Bool/Exercises.lean)
+- [`misc/Misc/Logic/Bool/Exercises/Chapter1.lean`](./misc/Misc/Logic/Bool/Exercises/Chapter1.lean)
   - `𝓢₁_functional_complete`: proof that `{T, ~, ∧, ∨}` is functional complete.
 - [`misc/Misc/Logic/Bool/DNF.lean`](./misc/Misc/Logic/Bool/DNF.lean)
   - `𝓢_functional_complete`: proof that `{¬, ⋁, ⋀}` is functional complete,
