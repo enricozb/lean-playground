@@ -2,6 +2,8 @@ import «Misc».Logic.Bool.FunctionalComplete
 
 namespace DNF
 
+open Logic
+
 def not' := @Symbol.mk 1 "¬" (fun b => ¬ (b 0))
 def and' (n : ℕ) := @Symbol.mk n "⋀" (fun b => ∀ i, b i)
 def or' (n : ℕ) := @Symbol.mk n "⋁" (fun b => ∃ i, b i)

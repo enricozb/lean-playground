@@ -1,5 +1,7 @@
 import «Misc».Logic.Bool.Utils
 
+namespace Logic
+
 /-- A symbol of arity `n`. -/
 structure Symbol (n : ℕ) where
   repr : String
@@ -119,3 +121,5 @@ instance {S : Signature} : ToString (S.Formula n) :=
         s!"{f.1}{params}"
   
   ⟨toString⟩
+
+end Logic

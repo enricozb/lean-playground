@@ -7,6 +7,8 @@ import Mathlib.Init.Set
 import Mathlib.Tactic.LibrarySearch
 import «Misc».Logic.Bool.DNF
 
+open Logic
+
 def top' := @Symbol.mk 0 "⊤" (fun _ => true)
 def not' := @Symbol.mk 1 "¬" (fun b => ¬ (b 0))
 def and' := @Symbol.mk 2 "∧" (fun b => (b 0) ∧ (b 1))

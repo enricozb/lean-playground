@@ -1,11 +1,13 @@
 import Mathlib.Data.FinEnum
 
+namespace Logic
+
 /--
   A notation for vectors.
 
   A definition cannot be used as inductive constructors can't contain `def`s.
 -/
-notation "[" α ";" n "]" => Fin n → α
+scoped[Logic] notation "[" α ";" n "]" => Fin n → α
 
 instance : FinEnum Bool := ⟨
   -- card
@@ -17,3 +19,5 @@ instance : FinEnum Bool := ⟨
   (by simp only),
   (by simp only)
 ⟩
+
+end Logic

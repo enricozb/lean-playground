@@ -1,5 +1,7 @@
 import «Misc».Logic.Bool.Signature
 
+namespace Logic
+
 /--
   A signature is _functional complete_ if any function of any arity is
   representable by some formula.
@@ -70,3 +72,5 @@ theorem Signature.subset_functional_complete {S₁ S₂ : Signature} (hfc : S₁
   S₂.functional_complete := by
   have hr : S₂.subsumes S₁ := S₁.subset_subsumes hs
   exact @subsumes_functional_complete S₁ S₂ hfc hr
+
+end Logic
