@@ -2,13 +2,13 @@ import «Misc».Logic.Bool.FunctionalComplete
 
 namespace DNF
 
-def not' := @Symbol.mk 1 "¬" (fun p => ¬ (p 0))
-def and' (n : ℕ) := @Symbol.mk n "⋀" (fun p => ∀ i, p i)
-def or' (n : ℕ) := @Symbol.mk n "⋁" (fun p => ∃ i, p i)
+def not' := @Symbol.mk 1 "¬" (fun b => ¬ (b 0))
+def and' (n : ℕ) := @Symbol.mk n "⋀" (fun b => ∀ i, b i)
+def or' (n : ℕ) := @Symbol.mk n "⋁" (fun b => ∃ i, b i)
 
-notation "~" => not'
-notation "⋀" => and'
-notation "⋁" => or'
+scoped [DNF] notation "~" => not'
+scoped [DNF] notation "⋀" => and'
+scoped [DNF] notation "⋁" => or'
 
 /--
   The signature `{T, ~} ∪ {⋁ n : n ∈ ℕ} ∪ {⋀ n : n ∈ ℕ}`.
@@ -16,7 +16,7 @@ notation "⋁" => or'
   This includes the big-or and big-and operators for every arity `n`, as they
   are used for constructing DNFs and CNFs of boolean functions.
 -/
-abbrev 𝓢 := ⟪~⟫ ∪ ⟪⋀, ⋁⟫ₙ
+def 𝓢 := ⟪~⟫ ∪ ⟪⋀, ⋁⟫ₙ
 
 theorem 𝓢_not : (~) ∈ 𝓢.symbols 1 := by
   simp [𝓢, Union.union, Set.union, Set.insert, Set.singleton]
@@ -26,6 +26,16 @@ theorem 𝓢_and {n : ℕ} : (⋀ n) ∈ 𝓢.symbols n := by
 
 theorem 𝓢_or {n : ℕ} : (⋁ n) ∈ 𝓢.symbols n := by
   simp [𝓢, Union.union, Set.union, Set.insert]
+
+theorem 𝓢_symbols_1 (hs : s ∈ 𝓢.symbols 1) : s = (~) ∨ s = (⋀ 1) ∨ s = (⋁ 1) := by
+  simp [𝓢, Union.union, Set.union, Set.insert, Set.singleton] at hs
+  exact hs
+
+theorem 𝓢_symbols_n {n : ℕ} {s : Symbol n} (hn : n ≠ 1) (hs : s ∈ 𝓢.symbols n) : s = (⋀ n) ∨ s = (⋁ n) := by
+  simp [𝓢, Union.union, Set.union, Set.insert, Set.singleton, hn] at hs
+  exact hs
+  
+theorem 𝓢_symbols_0 (hs : s ∈ 𝓢.symbols 0) : s = (⋀ 0) ∨ s = (⋁ 0) := 𝓢_symbols_n Nat.zero_ne_one hs
 
 /--
   A list of inputs satisfying `f`.

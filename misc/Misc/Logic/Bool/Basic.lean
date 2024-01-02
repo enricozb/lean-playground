@@ -4,82 +4,134 @@ import Mathlib.Data.Set.Basic
 import Mathlib.Init.Order.Defs
 import Mathlib.Init.Set
 import Mathlib.Tactic.LibrarySearch
-import «Misc».Logic.Bool.FunctionalComplete
+import «Misc».Logic.Bool.DNF
 
-def sig_tnoa := Signature.mk₁₂ {(¬)} {(∨), (∧)}
-def sig_no := Signature.mk₁₂ {(¬)} {(∨)}
-def sig_na := Signature.mk₁₂ {(¬)} {(∧)}
+def top' := @Symbol.mk 0 "⊤" (fun _ => true)
+def not' := @Symbol.mk 1 "¬" (fun b => ¬ (b 0))
+def and' := @Symbol.mk 2 "∧" (fun b => (b 0) ∧ (b 1))
+def or' := @Symbol.mk 2 "∨" (fun b => (b 0) ∨ (b 1))
 
-def sig_tnoa_subsumes_nOA : sig_tnoa.subsumes sig_nOA := fun {n} φ =>
+notation "T" => top'
+notation "~" => not'
+notation "⋏" => and'
+notation "⋎" => or'
+
+/--
+  The signature `{T, ~, ∧, ∨}`, where `∧` and `∨` operators are fixed-arity
+  binary operators.
+-/
+def 𝓢₁ := ⟪T⟫ ∪ ⟪~⟫ ∪ ⟪⋏, ⋎⟫
+
+theorem 𝓢₁_mem_top : (T) ∈ 𝓢₁.symbols 0 := by simp [𝓢₁, Union.union, Set.union, Set.singleton]
+theorem 𝓢₁_mem_not : (~) ∈ 𝓢₁.symbols 1 := by simp [𝓢₁, Union.union, Set.union, Set.singleton]
+theorem 𝓢₁_mem_and : (⋏) ∈ 𝓢₁.symbols 2 := by simp [𝓢₁, Union.union, Set.union, Set.insert]
+theorem 𝓢₁_mem_or : (⋎) ∈ 𝓢₁.symbols 2 := by simp [𝓢₁, Union.union, Set.union, Set.insert, Set.singleton]
+
+def 𝓢₁.top : 𝓢₁.Formula n := Signature.Formula.apply T 𝓢₁_mem_top default
+def 𝓢₁.bot : 𝓢₁.Formula n := Signature.Formula.apply ~ 𝓢₁_mem_not (fun _ => 𝓢₁.top)
+def 𝓢₁.not (φ : 𝓢₁.Formula n) : 𝓢₁.Formula n := Signature.Formula.apply ~ 𝓢₁_mem_not (fun _ => φ)
+
+def 𝓢₁.and (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
+  Fin.foldr m
+    (fun i φ => Signature.Formula.apply (⋏) 𝓢₁_mem_and (fun arg => if arg = 0 then (φs i) else φ))
+    𝓢₁.top
+
+def 𝓢₁.or {n m : ℕ} (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
+  Fin.foldr m
+    (fun i φ => Signature.Formula.apply (⋎) 𝓢₁_mem_or (fun arg => if arg = 0 then (φs i) else φ))
+    𝓢₁.top
+
+theorem 𝓢₁.and_value (φs : [𝓢₁.Formula n; m]) :
+  (𝓢₁.and φs).value = (fun b => ∀ i, (φs i).value b) := by
+  induction' m with m hmi
+  · rfl
+  · sorry 
+
+theorem 𝓢₁.or_value (φs : [𝓢₁.Formula n; m]) :
+  (𝓢₁.or φs).value = (fun b => ∃ i, (φs i).value b) := by
+  induction' m with m hmi
+  · sorry
+  · sorry 
+
+theorem 𝓢₁_subsumes_DNF_𝓢 : 𝓢₁.subsumes DNF.𝓢 := by
+  intro n φ
+  suffices hψ : ∃ ψ : 𝓢₁.Formula n, φ.value = ψ.value
+  exact ⟨hψ.choose, hψ.choose_spec⟩
+
+  -- TODO hf_and and hf_or here can be handled in the same way in all arities
   match φ with
-  | Signature.Formula.var i => ⟨Signature.Formula.var i, rfl⟩
-  | @Signature.Formula.apply _ _ a f hf φs =>
+  | Signature.Formula.var i => exact ⟨Signature.Formula.var i, rfl⟩
+  | @Signature.Formula.apply DNF.𝓢 n a f hf φs =>
     match a with
     | 0 =>
-      -- TODO: simplify this if-statement with some lemmas, esp the final `else`.
-      if h_or : f.repr = "⋁" then
-        -- should actually be false (or bot or something, don't need another symbol though)
-        ⟨@Signature.Formula.apply sig_tnoa n 0 (⊤) _ _, _⟩
-      else if h_and : f.repr = "⋀" then
-        ⟨@Signature.Formula.apply sig_tnoa n 0 (⊤) _ _, _⟩
-      else by
-        have hf : f.repr = "⋁" ∨ f.repr = "⋀" := by
-          apply Or.elim hf
-          · intro hf_or; apply Or.inl; rw [hf_or]
-          · intro hf_and; apply Or.inr; rw [hf_and]
-        have := not_or.mpr ⟨h_or, h_and⟩ hf
-        contradiction
-    | 1 => sorry
-    | _ => sorry
+      have hf := DNF.𝓢_symbols_0 hf
+      apply Or.elim hf
+      · intro hf_and
+        apply Exists.intro 𝓢₁.top
+        simp [Signature.Formula.value, DNF.and', top', *]
+      · intro hf_or
+        apply Exists.intro 𝓢₁.bot
+        simp [Signature.Formula.value, DNF.or', top', not', *]
 
-  -- intro a f hf
-  -- match a with
-  -- | 0 =>
-  --   simp [bigand', bigor', *] at hf
+    | 1 =>
+      have hf := DNF.𝓢_symbols_1 hf
+      have φs₁ := (fun i => 𝓢₁_subsumes_DNF_𝓢 (φs i)) 1
+      apply Or.elim hf; swap; intro hf; apply Or.elim hf
 
-  --   if h_or : f.repr = "⋁" then
-  --     exact ⟨fun _ => false, rfl⟩
-  --   else if h_and : f.repr = "⋀" then
-  --     sorry
-  --   else
-  --     have hf : f.repr = "⋁" ∨ f.repr = "⋀" := by
-  --       apply Or.elim hf
-  --       · intro hf_or; apply Or.inl; rw [hf_or]
-  --       · intro hf_and; apply Or.inr; rw [hf_and]
-  --     have := not_or.mpr ⟨h_or, h_and⟩ hf
-  --     contradiction
+      · intro hf_and
+        apply Exists.intro φs₁.1
+        simp [Signature.Formula.value, DNF.and', ←φs₁.2, *]
+        funext b
+        by_cases (φs 1).value b = true
+        · rw [h, decide_eq_true_eq]
+          intro i
+          rw [Subsingleton.eq_one i, h]
+        · rw [Bool.not_eq_true] at h
+          rw [h, decide_eq_false_iff_not, not_forall]
+          let i : Fin 1 := 0
+          apply Exists.intro i
+          rw [Bool.not_eq_true, Subsingleton.eq_one i, h]
 
-  -- | 1 => sorry
-  -- | 2 => sorry
-  -- | n => sorry
+      · intro hf_or
+        apply Exists.intro φs₁.1
+        simp [Signature.Formula.value, DNF.or', ←φs₁.2, *]
+        funext b
+        by_cases (φs 1).value b = true
+        · rw [h, decide_eq_true_eq]
+          let i : Fin 1 := 0
+          apply Exists.intro i
+          rw [Subsingleton.eq_one i, h]
+        · rw [Bool.not_eq_true] at h
+          rw [h, decide_eq_false_iff_not, not_exists]
+          intro i
+          rw [Subsingleton.eq_one i, h, Bool.not_eq_true]
 
+      · intro hf_not
+        apply Exists.intro (𝓢₁.not φs₁.1)
+        simp [Signature.Formula.value, DNF.not', not', ←φs₁.2, *]
 
--- theorem sig_noa_subsumes_nOA : sig_noa.subsumes sig_nOA := by
---   intro n φ
-
---   let rec embed (φ : sig_nOA.Formula n) : sig_noa.Formula n :=
---     match φ with
---     | Signature.Formula.var i => Signature.Formula.var i
---     | Signature.Formula.apply a f hf φs => match a with
---       | 0 => by
---         have : f = (⋁ 0) := hf
---         exact 
---       | 1 => by
---         have : f = (¬) ∨ f = (⋁ 1) := hf
---       | 2 => sorry
---       | n => sorry
-
---   let ψ := embed φ
---   have hψ : φ.value = ψ.value := sorry
-  
---   exact ⟨ψ, hψ⟩ 
+    | k + 2 =>
+      let a := k + 2
+      have ha_neq_one : a ≠ 1 := Nat.succ_succ_ne_one k
+      have hf := DNF.𝓢_symbols_n ha_neq_one hf
+      let φ's := (fun i => (𝓢₁_subsumes_DNF_𝓢 (φs i)).1)
+      have hφ's := (fun i => (𝓢₁_subsumes_DNF_𝓢 (φs i)).2)
+      apply Or.elim hf
+      · intro hf_and
+        apply Exists.intro (𝓢₁.and φ's)
+        rw [𝓢₁.and_value]
+        simp [Signature.Formula.value, DNF.and', *]
+      · intro hf_or 
+        apply Exists.intro (𝓢₁.or φ's)
+        rw [𝓢₁.or_value]
+        simp [Signature.Formula.value, DNF.or', *]
 
 /--
   Theorem 2.1 from Chapter 1.
 
-  The signature `{⊤, ¬, ∧, ∨}` is functional complete.
+  The signature `{T, ~, ∧, ∨}` is functional complete.
 -/
-theorem sig_tnoa_functional_complete : sig_tnoa.functional_complete :=
+theorem 𝓢₁_functional_complete : 𝓢₁.functional_complete :=
   Signature.subsumes_functional_complete
-    sig_nOA_functional_complete
-    sig_tnoa_subsumes_nOA
+    DNF.𝓢_functional_complete
+    𝓢₁_subsumes_DNF_𝓢
