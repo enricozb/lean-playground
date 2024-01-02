@@ -39,19 +39,19 @@ def 𝓢₁.and (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
 def 𝓢₁.or {n m : ℕ} (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
   Fin.foldr m
     (fun i φ => Signature.Formula.apply (⋎) 𝓢₁_mem_or (fun arg => if arg = 0 then (φs i) else φ))
-    𝓢₁.top
+    𝓢₁.bot
 
 theorem 𝓢₁.and_value (φs : [𝓢₁.Formula n; m]) :
   (𝓢₁.and φs).value = (fun b => ∀ i, (φs i).value b) := by
   induction' m with m hmi
   · rfl
-  · sorry 
+  · sorry
 
 theorem 𝓢₁.or_value (φs : [𝓢₁.Formula n; m]) :
   (𝓢₁.or φs).value = (fun b => ∃ i, (φs i).value b) := by
   induction' m with m hmi
+  · rfl
   · sorry
-  · sorry 
 
 theorem 𝓢₁_subsumes_DNF_𝓢 : 𝓢₁.subsumes DNF.𝓢 := by
   intro n φ
