@@ -1,3 +1,4 @@
+import Mathlib.Data.Fin.Tuple.Basic
 import Mathlib.Data.Finset.Sort
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.Set.Basic
@@ -32,26 +33,49 @@ def 𝓢₁.bot : 𝓢₁.Formula n := Signature.Formula.apply ~ 𝓢₁_mem_not
 def 𝓢₁.not (φ : 𝓢₁.Formula n) : 𝓢₁.Formula n := Signature.Formula.apply ~ 𝓢₁_mem_not (fun _ => φ)
 
 def 𝓢₁.and (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
-  Fin.foldr m
-    (fun i φ => Signature.Formula.apply (⋏) 𝓢₁_mem_and (fun arg => if arg = 0 then (φs i) else φ))
-    𝓢₁.top
+  match m with
+  | 0 => 𝓢₁.top
+  | _+1 => Signature.Formula.apply (⋏) 𝓢₁_mem_and
+      (fun arg => if arg = 0 then (φs 0) else (𝓢₁.and (Fin.tail φs)))
+
+theorem 𝓢₁.and_value_succ (b: [Bool; n]) (φs : [𝓢₁.Formula n; m + 1]) :
+  ((𝓢₁.and φs).value b) = ((φs 0).value b && (𝓢₁.and (Fin.tail φs)).value b) := by
+  simp [Signature.Formula.value, 𝓢₁.and, and', top']
 
 def 𝓢₁.or {n m : ℕ} (φs : [𝓢₁.Formula n; m]) : 𝓢₁.Formula n :=
-  Fin.foldr m
-    (fun i φ => Signature.Formula.apply (⋎) 𝓢₁_mem_or (fun arg => if arg = 0 then (φs i) else φ))
-    𝓢₁.bot
+  match m with
+  | 0 => 𝓢₁.bot
+  | _+1 => Signature.Formula.apply (⋎) 𝓢₁_mem_or
+      (fun arg => if arg = 0 then (φs 0) else (𝓢₁.or (Fin.tail φs)))
+
+theorem 𝓢₁.or_value_succ (b: [Bool; n]) (φs : [𝓢₁.Formula n; m + 1]) :
+  ((𝓢₁.or φs).value b) = ((φs 0).value b || (𝓢₁.or (Fin.tail φs)).value b) := by
+  simp [Signature.Formula.value, 𝓢₁.or, or', top']
 
 theorem 𝓢₁.and_value (φs : [𝓢₁.Formula n; m]) :
   (𝓢₁.and φs).value = (fun b => ∀ i, (φs i).value b) := by
   induction' m with m hmi
   · rfl
-  · sorry
+  · funext b
+    rw [𝓢₁.and_value_succ b φs, hmi (Fin.tail φs)]
+    simp [Signature.Formula.value, Fin.tail_def, *]
+    by_cases (φs 0).value b = true
+    · simp only [h, Bool.true_and, Fin.forall_fin_succ, true_and]
+    · rw [Bool.not_eq_true] at h
+      simp only [h, Bool.false_and, Bool.false_eq_decide_iff, not_forall, Bool.not_eq_true]
+      exact ⟨0, h⟩
 
 theorem 𝓢₁.or_value (φs : [𝓢₁.Formula n; m]) :
   (𝓢₁.or φs).value = (fun b => ∃ i, (φs i).value b) := by
   induction' m with m hmi
   · rfl
-  · sorry
+  · funext b
+    rw [𝓢₁.or_value_succ b φs, hmi (Fin.tail φs)]
+    simp [Signature.Formula.value, Fin.tail_def, *]
+    by_cases (φs 0).value b = true
+    · simp only [h, Bool.true_or, Bool.true_eq_decide_iff]; exact ⟨0, h⟩
+    · rw [Bool.not_eq_true] at h
+      simp only [Bool.false_or, Fin.exists_fin_succ, false_or, h]
 
 theorem 𝓢₁_subsumes_DNF_𝓢 : 𝓢₁.subsumes DNF.𝓢 := by
   intro n φ

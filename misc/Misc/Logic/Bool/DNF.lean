@@ -34,7 +34,7 @@ theorem 𝓢_symbols_1 (hs : s ∈ 𝓢.symbols 1) : s = (~) ∨ s = (⋀ 1) ∨
 theorem 𝓢_symbols_n {n : ℕ} {s : Symbol n} (hn : n ≠ 1) (hs : s ∈ 𝓢.symbols n) : s = (⋀ n) ∨ s = (⋁ n) := by
   simp [𝓢, Union.union, Set.union, Set.insert, Set.singleton, hn] at hs
   exact hs
-  
+
 theorem 𝓢_symbols_0 (hs : s ∈ 𝓢.symbols 0) : s = (⋀ 0) ∨ s = (⋁ 0) := 𝓢_symbols_n Nat.zero_ne_one hs
 
 /--
