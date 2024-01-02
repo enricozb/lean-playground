@@ -5,15 +5,15 @@ Messing around with [Lean](https://github.com/leanprover/lean4).
 Below are some highlights of each of the files.
 
 ## Boolean Logic
-- [`misc/Misc/Bool/Basic.lean`](./misc/Misc/Bool/Basic.lean)
+- [`misc/Misc/Logic/Bool/Basic.lean`](./misc/Misc/Logic/Bool/Basic.lean)
   - `𝓢₁_functional_complete`: proof that `{T, ~, ∧, ∨}` is functional complete.
-- [`misc/Misc/Bool/DNF.lean`](./misc/Misc/Bool/DNF.lean)
+- [`misc/Misc/Logic/Bool/DNF.lean`](./misc/Misc/Logic/Bool/DNF.lean)
   - `𝓢_functional_complete`: proof that `{¬, ⋁, ⋀}` is functional complete,
     where `{⋁, ⋀}` have arbitrary arity.
   - definition of a DNF, disjunctive normal form, of a formula.
-- [`misc/Misc/Bool/FunctionalComplete.lean`](./misc/Misc/Bool/FunctionalComplete.lean)
+- [`misc/Misc/Logic/Bool/FunctionalComplete.lean`](./misc/Misc/Logic/Bool/FunctionalComplete.lean)
   - definitions of functional complete, signature subsets, and subsumes.
-- [`misc/Misc/Bool/Signature.lean`](./misc/Misc/Bool/Signature.lean)
+- [`misc/Misc/Logic/Bool/Signature.lean`](./misc/Misc/Logic/Bool/Signature.lean)
   - definitions of symbols, signatures, and formulas.
 
 ## Fibonacci
