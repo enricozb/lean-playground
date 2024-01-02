@@ -5,19 +5,19 @@ Messing around with [Lean](https://github.com/leanprover/lean4).
 Below are some highlights of each of the files.
 
 ## Boolean Logic
-- [`misc/Misc/Logic/Bool/Exercises/Chapter1.lean`](./misc/Misc/Logic/Bool/Exercises/Chapter1.lean)
+- [`misc/Misc/Logic/Bool/Exercises/Chapter1.lean`](misc/Misc/Logic/Bool/Exercises/Chapter1.lean)
   - `𝓢₁_functional_complete`: proof that `{T, ~, ∧, ∨}` is functional complete.
-- [`misc/Misc/Logic/Bool/DNF.lean`](./misc/Misc/Logic/Bool/DNF.lean)
+- [`misc/Misc/Logic/Bool/DNF.lean`](misc/Misc/Logic/Bool/DNF.lean)
   - `𝓢_functional_complete`: proof that `{¬, ⋁, ⋀}` is functional complete,
     where `{⋁, ⋀}` have arbitrary arity.
   - definition of a DNF, disjunctive normal form, of a formula.
-- [`misc/Misc/Logic/Bool/FunctionalComplete.lean`](./misc/Misc/Logic/Bool/FunctionalComplete.lean)
+- [`misc/Misc/Logic/Bool/FunctionalComplete.lean`](misc/Misc/Logic/Bool/FunctionalComplete.lean)
   - definitions of functional complete, signature subsets, and subsumes.
-- [`misc/Misc/Logic/Bool/Signature.lean`](./misc/Misc/Logic/Bool/Signature.lean)
+- [`misc/Misc/Logic/Bool/Signature.lean`](misc/Misc/Logic/Bool/Signature.lean)
   - definitions of symbols, signatures, and formulas.
 
 ## Fibonacci
-- [`misc/Misc/Fibonacci.lean`](./misc/Misc/Fibonacci.lean)
+- [`misc/Misc/Fibonacci.lean`](misc/Misc/Fibonacci.lean)
   - Standard definition of the Fibonacci sequence
     ```lean
     def fib_rec : ℕ → ℕ := fun
@@ -35,7 +35,7 @@ Below are some highlights of each of the files.
       ```
   - Equating these multiple definitions
 
-- [`misc/Misc/FibMod.lean`](./misc/Misc/FibMod.lean)
+- [`misc/Misc/FibMod.lean`](misc/Misc/FibMod.lean)
   - Modular definition of the Fibonacci sequence:
     ```lean
     def fib [mod : Mod] (n : ℕ) : ↑mod :=
